@@ -2,7 +2,7 @@
 chcp 65001 > nul
 cd /d "%~dp0.."
 echo ====================================================
-echo  Сборка Whisper Transcriber для Windows (.exe)
+echo  Building Whisper Transcriber for Windows (.exe)
 echo ====================================================
 
 pip install pyinstaller
@@ -10,9 +10,9 @@ pyinstaller --noconfirm --onedir --windowed --name "Transcriber" --collect-all w
 
 if exist "dist\Transcriber\Transcriber.exe" (
     echo.
-    echo [УСПЕХ] Исполняемый файл успешно собран в: dist\Transcriber\Transcriber.exe
+    echo [SUCCESS] Executable successfully built: dist\Transcriber\Transcriber.exe
 ) else (
     echo.
-    echo [ОШИБКА] Не удалось собрать исполняемый файл.
+    echo [ERROR] Build failed.
 )
 pause

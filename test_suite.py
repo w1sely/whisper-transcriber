@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Automated Test Suite for Whisper Transcriber.
+"""
+
 import os
 import sys
 import time
@@ -5,7 +12,7 @@ import json
 import subprocess
 import unittest
 
-# Настройка UTF-8 для вывода в консоль Windows
+# UTF-8 console output setup for Windows
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 if hasattr(sys.stderr, 'reconfigure'):
@@ -25,9 +32,9 @@ class TestWhisperTranscriber(unittest.TestCase):
         cls.output_dir = os.path.join(cls.work_dir, "test_output")
         os.makedirs(cls.output_dir, exist_ok=True)
 
-    # === ТЕСТ 1: Безопасность и санитизация путей (Path Traversal Protection) ===
+    # === TEST 1: Path Traversal Protection & Sanitization ===
     def test_01_security_filename_sanitization(self):
-        print("\n[ТЕСТ 1] Проверка безопасности и санитизации имен файлов...")
+        print("\n[TEST 1] Testing filename security and sanitization...")
         
         test_cases = [
             ("../../etc/passwd", "passwd"),
@@ -36,7 +43,7 @@ class TestWhisperTranscriber(unittest.TestCase):
             ("...spaces_and_dots...   ", "spaces_and_dots"),
             (":::???***", "transcription_final"),
             ("", "transcription_final"),
-            ("Обычное_Имя_123", "Обычное_Имя_123")
+            ("regular_name_123", "regular_name_123")
         ]
 
         for raw_input, expected_contain in test_cases:
@@ -49,13 +56,13 @@ class TestWhisperTranscriber(unittest.TestCase):
 
             target_file = os.path.join(self.output_dir, f"{base_name}.txt")
             resolved_dir = os.path.abspath(os.path.dirname(target_file))
-            self.assertEqual(resolved_dir, os.path.abspath(self.output_dir), f"Path traversal обнаружен для: {raw_input}")
-            print(f"  [OK] Вход: '{raw_input}' -> Санитизировано: '{base_name}'")
+            self.assertEqual(resolved_dir, os.path.abspath(self.output_dir), f"Path traversal detected for: {raw_input}")
+            print(f"  [OK] Input: '{raw_input}' -> Sanitized: '{base_name}'")
 
-    # === ТЕСТ 2: FFmpeg обработка (Вырезка тишины, моно 16 кГц) ===
+    # === TEST 2: FFmpeg Preprocessing (Silence Removal, Mono 16 kHz) ===
     def test_02_ffmpeg_preprocessing(self):
-        print("\n[ТЕСТ 2] Проверка FFmpeg: конвертация в 16 кГц моно и вырезка тишины...")
-        self.assertTrue(os.path.exists(self.test_audio), "Тестовый аудиофайл не найден")
+        print("\n[TEST 2] Testing FFmpeg: 16 kHz mono conversion and silence removal...")
+        self.assertTrue(os.path.exists(self.test_audio), "Test audio file not found")
 
         cleaned_audio = os.path.join(self.output_dir, "test_cleaned.wav")
         if os.path.exists(cleaned_audio):
@@ -70,23 +77,23 @@ class TestWhisperTranscriber(unittest.TestCase):
         ]
 
         res = subprocess.run(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        self.assertEqual(res.returncode, 0, f"Ошибка FFmpeg: {res.stderr.decode('utf-8', errors='ignore')}")
-        self.assertTrue(os.path.exists(cleaned_audio), "Очищенный файл не создан")
-        self.assertGreater(os.path.getsize(cleaned_audio), 1000, "Размер очищенного файла подозрительно мал")
+        self.assertEqual(res.returncode, 0, f"FFmpeg error: {res.stderr.decode('utf-8', errors='ignore')}")
+        self.assertTrue(os.path.exists(cleaned_audio), "Cleaned file was not created")
+        self.assertGreater(os.path.getsize(cleaned_audio), 1000, "Cleaned file size is suspiciously small")
 
         probe_res = subprocess.run(["ffmpeg", "-i", cleaned_audio], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out_str = probe_res.stderr.decode("utf-8", errors="ignore")
-        self.assertIn("16000 Hz", out_str, "Частота дискретизации должна быть 16000 Hz")
-        self.assertIn("mono", out_str, "Канал должен быть mono")
-        print("  [OK] FFmpeg успешно создал 16kHz mono аудио без тишины.")
+        self.assertIn("16000 Hz", out_str, "Sample rate must be 16000 Hz")
+        self.assertIn("mono", out_str, "Audio channel must be mono")
+        print("  [OK] FFmpeg successfully created 16kHz mono audio without silence.")
 
-    # === ТЕСТ 3: GPU (CUDA) и управление видеопамятью (VRAM) ===
+    # === TEST 3: GPU (CUDA) and VRAM Lifecycle ===
     def test_03_gpu_and_vram_lifecycle(self):
-        print("\n[ТЕСТ 3] Проверка GPU (CUDA RTX 5070) и очистки видеопамяти...")
-        self.assertTrue(torch.cuda.is_available(), "CUDA должна быть доступна на машине")
+        print("\n[TEST 3] Testing GPU (CUDA) and VRAM cleanup...")
+        self.assertTrue(torch.cuda.is_available(), "CUDA must be available")
         
         gpu_name = torch.cuda.get_device_name(0)
-        print(f"  [OK] Обнаружена видеокарта: {gpu_name}")
+        print(f"  [OK] Detected GPU: {gpu_name}")
 
         torch.cuda.empty_cache()
         mem_start = torch.cuda.memory_allocated()
@@ -95,20 +102,20 @@ class TestWhisperTranscriber(unittest.TestCase):
         model = whisper.load_model("turbo", device="cuda")
         t_load = time.time() - t0
         mem_loaded = torch.cuda.memory_allocated()
-        print(f"  [OK] Модель 'turbo' загружена за {t_load:.2f} сек. Память: {(mem_loaded - mem_start)/1024**2:.1f} МБ")
+        print(f"  [OK] Model 'turbo' loaded in {t_load:.2f} s. VRAM: {(mem_loaded - mem_start)/1024**2:.1f} MB")
 
-        self.assertGreater(mem_loaded, mem_start, "Видеопамять должна быть занята моделью")
+        self.assertGreater(mem_loaded, mem_start, "VRAM must be allocated by the model")
 
         del model
         torch.cuda.empty_cache()
         mem_after = torch.cuda.memory_allocated()
         freed_mb = (mem_loaded - mem_after) / 1024**2
-        print(f"  [OK] Модель выгружена, освобождено VRAM: {freed_mb:.1f} МБ")
-        self.assertLess(mem_after, mem_loaded, "Память VRAM должна освобождаться")
+        print(f"  [OK] Model unloaded, VRAM freed: {freed_mb:.1f} MB")
+        self.assertLess(mem_after, mem_loaded, "VRAM must be freed after unloading")
 
-    # === ТЕСТ 4: Сквозная транскрибация речи и валидация файлов ===
+    # === TEST 4: End-to-End Speech Transcription & File Validation ===
     def test_04_end_to_end_transcription(self):
-        print("\n[ТЕСТ 4] Сквозная транскрибация аудиозаписи...")
+        print("\n[TEST 4] End-to-end audio transcription...")
         cleaned_audio = os.path.join(self.output_dir, "test_cleaned.wav")
         self.assertTrue(os.path.exists(cleaned_audio))
 
@@ -124,10 +131,10 @@ class TestWhisperTranscriber(unittest.TestCase):
         t_trans = time.time() - t0
 
         text = result.get("text", "").strip()
-        print(f"  [OK] Распознанный текст: \"{text}\"")
-        print(f"  [OK] Время распознавания: {t_trans:.2f} сек (для 6.5 сек аудио)")
+        print(f"  [OK] Transcribed text: \"{text}\"")
+        print(f"  [OK] Transcription time: {t_trans:.2f} s (for 6.5 s audio)")
 
-        self.assertTrue(len(text) > 0, "Текст не должен быть пустым")
+        self.assertTrue(len(text) > 0, "Text must not be empty")
         
         base_name = "test_transcription_result"
         txt_path = os.path.join(self.output_dir, f"{base_name}.txt")
@@ -139,8 +146,8 @@ class TestWhisperTranscriber(unittest.TestCase):
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(result["segments"], f, ensure_ascii=False, indent=2)
 
-        self.assertTrue(os.path.exists(txt_path), "Файл .txt должен существовать")
-        self.assertTrue(os.path.exists(json_path), "Файл .json должен существовать")
+        self.assertTrue(os.path.exists(txt_path), ".txt file must exist")
+        self.assertTrue(os.path.exists(json_path), ".json file must exist")
 
         with open(json_path, "r", encoding="utf-8") as f:
             loaded_json = json.load(f)
@@ -149,27 +156,27 @@ class TestWhisperTranscriber(unittest.TestCase):
         self.assertIn("start", loaded_json[0])
         self.assertIn("end", loaded_json[0])
         self.assertIn("text", loaded_json[0])
-        print(f"  [OK] JSON таймкоды валидны: {len(loaded_json)} сегмент(ов).")
+        print(f"  [OK] JSON timestamps valid: {len(loaded_json)} segment(s).")
 
-    # === ТЕСТ 5: Обработка исключений и поврежденных файлов ===
+    # === TEST 5: Exception Handling and Corrupt Files ===
     def test_05_exception_handling(self):
-        print("\n[ТЕСТ 5] Проверка обработки исключений и битых файлов...")
+        print("\n[TEST 5] Testing exception handling and corrupt media files...")
         
-        # 1. Несуществующий файл
+        # 1. Non-existent file
         with self.assertRaises(Exception):
             model = whisper.load_model("turbo", device="cuda")
             model.transcribe("non_existent_file_xyz_123.wav")
-        print("  [OK] Исключение на несуществующий файл корректно перехватывается.")
+        print("  [OK] Exception for non-existent file handled properly.")
 
-        # 2. Поврежденный файл
+        # 2. Corrupt file
         corrupt_file = os.path.join(self.output_dir, "corrupt.wav")
         with open(corrupt_file, "wb") as f:
             f.write(b"NOT_A_VALID_WAV_HEADER_DATA")
 
         res = subprocess.run(["ffmpeg", "-y", "-i", corrupt_file, os.path.join(self.output_dir, "out_corrupt.wav")],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        self.assertNotEqual(res.returncode, 0, "FFmpeg должен возвращать ошибку на поврежденном файле")
-        print("  [OK] Ошибка поврежденного медиафайла в FFmpeg корректно определяется.")
+        self.assertNotEqual(res.returncode, 0, "FFmpeg must return error for corrupted audio file")
+        print("  [OK] Corrupted media file in FFmpeg detected properly.")
 
 
 def run_tests():

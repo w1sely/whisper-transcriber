@@ -17,7 +17,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
-# Добавляем родительскую директорию в sys.path
+# Add parent directory to sys.path
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 sys.path.insert(0, PROJECT_ROOT)
@@ -35,7 +35,7 @@ class TestWhisperTranscriberCrossPlatform(unittest.TestCase):
         os.makedirs(cls.output_dir, exist_ok=True)
         cls.test_audio = os.path.join(cls.work_dir, "test_speech.wav")
 
-        # Если синтезированного аудио нет, создаем короткий wav через ffmpeg
+        # If synthesized test audio is missing, generate a short 3s wav via ffmpeg
         if not os.path.exists(cls.test_audio):
             cmd = [
                 "ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=1000:duration=3",
@@ -43,9 +43,9 @@ class TestWhisperTranscriberCrossPlatform(unittest.TestCase):
             ]
             subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    # 1. Безопасность и защита от Path Traversal
+    # 1. Path Traversal & Security Sanitization
     def test_01_security_path_traversal(self):
-        print("\n[ТЕСТ 1] Проверка безопасности путей (Windows / POSIX Path Traversal)...")
+        print("\n[TEST 1] Testing path traversal security (Windows / POSIX)...")
         malicious_inputs = [
             ("../../etc/passwd", "passwd"),
             ("../../../var/log/syslog", "syslog"),
@@ -54,7 +54,7 @@ class TestWhisperTranscriberCrossPlatform(unittest.TestCase):
             ("...spaces_and_dots...   ", "spaces_and_dots"),
             (":::???***", "transcription_final"),
             ("", "transcription_final"),
-            ("нормальное_имя_файла", "нормальное_имя_файла")
+            ("normal_file_name_123", "normal_file_name_123")
         ]
 
         for raw_name, expected_safe in malicious_inputs:
@@ -70,9 +70,9 @@ class TestWhisperTranscriberCrossPlatform(unittest.TestCase):
             self.assertEqual(resolved, os.path.abspath(self.output_dir), f"Path traversal breached for: {raw_name}")
             print(f"  [OK] Input: '{raw_name}' -> Safe: '{base_name}'")
 
-    # 2. Кроссплатформенная обработка аудио (FFmpeg)
+    # 2. Cross-platform Audio Processing (FFmpeg)
     def test_02_ffmpeg_preprocessing(self):
-        print("\n[ТЕСТ 2] Проверка FFmpeg: конвертация 16 kHz mono и удаление тишины...")
+        print("\n[TEST 2] Testing FFmpeg: 16 kHz mono conversion and silence removal...")
         self.assertTrue(os.path.exists(self.test_audio))
 
         cleaned = os.path.join(self.output_dir, "test_cross_cleaned.wav")
@@ -88,40 +88,40 @@ class TestWhisperTranscriberCrossPlatform(unittest.TestCase):
         ]
         flags = get_subprocess_creation_flags()
         res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, creationflags=flags)
-        self.assertEqual(res.returncode, 0, "FFmpeg вернул ошибку при конвертации")
+        self.assertEqual(res.returncode, 0, "FFmpeg returned error during audio preprocessing")
         self.assertTrue(os.path.exists(cleaned))
-        print("  [OK] FFmpeg успешно обработал аудиофайл.")
+        print("  [OK] FFmpeg successfully preprocessed the audio file.")
 
-    # 3. Аппаратное ускорение (CUDA / MPS / CPU fallback)
+    # 3. Hardware Acceleration (CUDA / MPS / CPU fallback)
     def test_03_hardware_acceleration(self):
-        print("\n[ТЕСТ 3] Проверка аппаратного ускорения (CUDA / MPS / CPU)...")
+        print("\n[TEST 3] Testing hardware acceleration (CUDA / MPS / CPU)...")
         if torch.cuda.is_available():
             dev = "cuda"
             name = torch.cuda.get_device_name(0)
-            print(f"  [OK] Найдено ускорение NVIDIA CUDA: {name}")
+            print(f"  [OK] Found NVIDIA CUDA acceleration: {name}")
         elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
             dev = "mps"
-            print("  [OK] Найдено ускорение Apple Silicon (Metal / MPS)")
+            print("  [OK] Found Apple Silicon acceleration (Metal / MPS)")
         else:
             dev = "cpu"
-            print("  [OK] Используется процессор (CPU fallback)")
+            print("  [OK] Using processor (CPU fallback)")
 
-        # Загрузка и выгрузка
+        # Load and unload model lifecycle
         torch.cuda.empty_cache() if dev == "cuda" else None
         model = whisper.load_model("turbo", device=dev)
         self.assertIsNotNone(model)
-        print("  [OK] Модель 'turbo' успешно загружена на целевое устройство.")
+        print("  [OK] Model 'turbo' successfully loaded on target device.")
 
         del model
         if dev == "cuda":
             torch.cuda.empty_cache()
         elif dev == "mps" and hasattr(torch, "mps"):
             torch.mps.empty_cache()
-        print("  [OK] Память устройства корректно освобождена.")
+        print("  [OK] Device memory released cleanly.")
 
-    # 4. Сквозное распознавание и атомарная запись файлов
+    # 4. End-to-End Transcription and Atomic File Persistence
     def test_04_transcription_and_atomic_write(self):
-        print("\n[ТЕСТ 4] Сквозная транскрибация и проверка атомарной записи файлов...")
+        print("\n[TEST 4] End-to-end transcription and atomic file writing test...")
         cleaned = os.path.join(self.output_dir, "test_cross_cleaned.wav")
         dev = "cuda" if torch.cuda.is_available() else ("mps" if hasattr(torch.backends, "mps") and torch.backends.mps.is_available() else "cpu")
 
@@ -133,7 +133,7 @@ class TestWhisperTranscriberCrossPlatform(unittest.TestCase):
         txt_file = os.path.join(self.output_dir, "test_atomic.txt")
         json_file = os.path.join(self.output_dir, "test_atomic.json")
 
-        # Атомарная запись
+        # Atomic write with temporary buffer
         tmp_txt = txt_file + ".tmp"
         tmp_json = json_file + ".tmp"
         with open(tmp_txt, "w", encoding="utf-8") as f:
@@ -146,7 +146,7 @@ class TestWhisperTranscriberCrossPlatform(unittest.TestCase):
 
         self.assertTrue(os.path.exists(txt_file))
         self.assertTrue(os.path.exists(json_file))
-        print(f"  [OK] Результат успешно распознан за {duration} с и атомарно сохранен.")
+        print(f"  [OK] Audio transcribed in {duration} s and atomically saved.")
 
 
 def run_cross_platform_tests():

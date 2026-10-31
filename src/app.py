@@ -17,7 +17,7 @@ import urllib.request
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
-# Попытка импорта torch и whisper
+# Attempt to import torch and whisper
 try:
     import torch
     import whisper
@@ -27,19 +27,19 @@ except ImportError as e:
     IMPORT_ERROR_MSG = str(e)
 
 
-# Описание моделей Whisper и их размеры
+# Whisper model descriptions and sizes
 MODEL_INFO = {
-    "turbo": {"file": "large-v3-turbo.pt", "size": "1.5 ГБ", "desc": "Оптимальная (быстрая и точная)"},
-    "large-v3": {"file": "large-v3.pt", "size": "2.9 ГБ", "desc": "Максимальная точность"},
-    "medium": {"file": "medium.pt", "size": "1.4 ГБ", "desc": "Средняя точность"},
-    "small": {"file": "small.pt", "size": "460 МБ", "desc": "Легкая модель"},
-    "base": {"file": "base.pt", "size": "140 МБ", "desc": "Базовая быстрая"},
-    "tiny": {"file": "tiny.pt", "size": "75 МБ", "desc": "Сверхлегкая"},
+    "turbo": {"file": "large-v3-turbo.pt", "size": "1.5 GB", "desc": "Optimal (fast and accurate)"},
+    "large-v3": {"file": "large-v3.pt", "size": "2.9 GB", "desc": "Maximum accuracy"},
+    "medium": {"file": "medium.pt", "size": "1.4 GB", "desc": "Balanced accuracy"},
+    "small": {"file": "small.pt", "size": "460 MB", "desc": "Lightweight model"},
+    "base": {"file": "base.pt", "size": "140 MB", "desc": "Fast baseline"},
+    "tiny": {"file": "tiny.pt", "size": "75 MB", "desc": "Ultra-lightweight"},
 }
 
 
 def open_path_in_os(path):
-    """Кроссплатформенное открытие папки или файла в системном проводнике."""
+    """Cross-platform opening of a folder or file in the system file manager."""
     if not os.path.exists(path):
         return
     try:
@@ -48,21 +48,21 @@ def open_path_in_os(path):
         elif sys.platform == "darwin":
             subprocess.run(["open", path], check=False)
         else:
-            # Linux и другие Unix-подобные ОС
+            # Linux and other Unix-like OS
             subprocess.run(["xdg-open", path], check=False)
     except Exception as e:
-        print(f"Не удалось открыть путь {path}: {e}")
+        print(f"Failed to open path {path}: {e}")
 
 
 def get_subprocess_creation_flags():
-    """Флаги для скрытия лишних консольных окон (Windows NT)."""
+    """Flags to suppress extra console windows (Windows NT)."""
     if sys.platform == "win32":
         return subprocess.CREATE_NO_WINDOW
     return 0
 
 
 class TextRedirector:
-    """Перенаправляет stdout/stderr в очередь GUI для отображения логов в реальном времени."""
+    """Redirects stdout/stderr to the GUI queue for real-time log rendering."""
     def __init__(self, log_queue, tag="stdout"):
         self.log_queue = log_queue
         self.tag = tag
@@ -79,12 +79,12 @@ class TranscriberApp:
     def __init__(self, root):
         self.root = root
         
-        # --- СТАНДАРТНОЕ ОКНО СИСТЕМЫ (OS WINDOW) ---
+        # --- SYSTEM WINDOW (OS WINDOW) ---
         self.root.title("Whisper Transcriber (Cross-Platform)")
         self.root.geometry("760x700")
         self.root.minsize(680, 580)
         
-        # Перехват закрытия окна на крестик
+        # Intercept window close button (X)
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         self.center_window()
@@ -96,11 +96,11 @@ class TranscriberApp:
         self.loaded_model_name = None
         self.ffmpeg_proc = None
 
-        # Папка кэша Whisper (стандартно ~/.cache/whisper на всех ОС)
+        # Whisper cache directory (default ~/.cache/whisper across all OS)
         self.whisper_cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "whisper")
         os.makedirs(self.whisper_cache_dir, exist_ok=True)
 
-        # --- КРОСС-ПЛАТФОРМЕННОЕ ОПРЕДЕЛЕНИЕ ОБОРУДОВАНИЯ ---
+        # --- CROSS-PLATFORM HARDWARE DETECTION ---
         self.device_str = "cpu"
         self.device_display = "CPU"
         self.has_accel = False
@@ -127,9 +127,9 @@ class TranscriberApp:
                 self.device_display = "CPU"
         else:
             self.device_str = "cpu"
-            self.device_display = "Ошибка: не найдены torch / whisper"
+            self.device_display = "Error: torch / whisper not found"
 
-        # Цветовая гамма (Modern Dark Theme)
+        # Color palette (Modern Dark Theme)
         self.colors = {
             "bg": "#1e1e2e",
             "card_bg": "#252538",
@@ -159,10 +159,10 @@ class TranscriberApp:
         self.setup_styles()
         self.build_ui()
 
-        # Запуск цикла чтения очереди логов
+        # Start log queue processing loop
         self.root.after(100, self.process_log_queue)
         os_name = "macOS" if sys.platform == "darwin" else ("Windows" if sys.platform == "win32" else "Linux")
-        self.log_system(f"Платформа: {os_name} | Аппаратное ускорение: {self.device_display}")
+        self.log_system(f"Platform: {os_name} | Hardware Acceleration: {self.device_display}")
         self.check_ffmpeg()
 
     def center_window(self):
@@ -173,7 +173,7 @@ class TranscriberApp:
         self.root.geometry(f"{w}x{h}+{x}+{y}")
 
     def on_closing(self):
-        """Полное и безопасное закрытие приложения по нажатию на системный крестик."""
+        """Safely and completely close application on system close button."""
         self.cancel_requested = True
         self.is_processing = False
         if self.ffmpeg_proc and self.ffmpeg_proc.poll() is None:
@@ -215,7 +215,7 @@ class TranscriberApp:
         )
 
     def is_model_cached(self, model_key):
-        """Проверяет наличие файла модели в локальном кэше."""
+        """Check if model checkpoint exists in local cache."""
         info = MODEL_INFO.get(model_key)
         if not info:
             return False
@@ -223,18 +223,18 @@ class TranscriberApp:
         return os.path.exists(cache_path) and os.path.getsize(cache_path) > 1024 * 1024
 
     def get_model_combobox_values(self):
-        """Формирует список моделей с пометками о наличии."""
+        """Build model list with cache status indicators."""
         values = []
         for key, info in MODEL_INFO.items():
             if self.is_model_cached(key):
-                status = f"✓ Скачана ({info['size']})"
+                status = f"✓ Cached ({info['size']})"
             else:
-                status = f"⬇ Скачать ({info['size']})"
+                status = f"⬇ Download ({info['size']})"
             values.append(f"{key} [{status}]")
         return values
 
     def refresh_model_dropdown(self):
-        """Обновляет статус моделей в выпадающем списке."""
+        """Update model status in combobox dropdown."""
         current_selection = self.combo_model.get().split()[0] if self.combo_model.get() else "turbo"
         values = self.get_model_combobox_values()
         self.combo_model['values'] = values
@@ -247,7 +247,7 @@ class TranscriberApp:
         main_frame = tk.Frame(self.root, bg=self.colors["bg"], padx=18, pady=14)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 1. Шапка: Заголовок + Справка + Индикатор ускорения
+        # 1. Header: Title + Help + Hardware indicator
         top_bar = tk.Frame(main_frame, bg=self.colors["bg"])
         top_bar.pack(fill=tk.X, pady=(0, 10))
 
@@ -262,7 +262,7 @@ class TranscriberApp:
 
         btn_doctor = tk.Button(
             top_bar,
-            text="ℹ️ Справка / Команды ОС",
+            text="ℹ️ Help / OS Setup",
             font=("Segoe UI", 8, "bold"),
             bg=self.colors["btn_sub"],
             fg=self.colors["accent"],
@@ -291,7 +291,7 @@ class TranscriberApp:
         )
         self.badge_gpu.pack(side=tk.RIGHT)
 
-        # 2. Карточка управления
+        # 2. Control card
         ctrl_card = tk.Frame(
             main_frame,
             bg=self.colors["card_bg"],
@@ -303,7 +303,7 @@ class TranscriberApp:
         )
         ctrl_card.pack(fill=tk.X, pady=(0, 10))
 
-        # Выбор файла
+        # File selection
         file_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
         file_row.pack(fill=tk.X, pady=(0, 10))
 
@@ -325,7 +325,7 @@ class TranscriberApp:
 
         self.lbl_selected_file = tk.Label(
             file_row,
-            text="Файл не выбран. Нажмите «Change file»...",
+            text="No file selected. Click 'Change file'...",
             font=("Segoe UI", 9, "italic"),
             bg=self.colors["card_bg"],
             fg=self.colors["text_muted"],
@@ -333,13 +333,13 @@ class TranscriberApp:
         )
         self.lbl_selected_file.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        # Поле имени
+        # Name field
         name_label_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
         name_label_row.pack(fill=tk.X, pady=(2, 2))
 
         tk.Label(
             name_label_row,
-            text="Change name (имя итогового файла без расширения):",
+            text="Change name (output file name without extension):",
             font=("Segoe UI", 9, "bold"),
             bg=self.colors["card_bg"],
             fg=self.colors["text"]
@@ -347,7 +347,7 @@ class TranscriberApp:
 
         self.lbl_save_hint = tk.Label(
             name_label_row,
-            text="Создаст: <имя>.txt и <имя>.json",
+            text="Generates: <name>.txt and <name>.json",
             font=("Segoe UI", 8),
             bg=self.colors["card_bg"],
             fg=self.colors["text_muted"]
@@ -369,11 +369,11 @@ class TranscriberApp:
         )
         self.entry_name.pack(fill=tk.X, ipady=6)
 
-        # Опции
+        # Options
         opts_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
         opts_row.pack(fill=tk.X, pady=(0, 10))
 
-        tk.Label(opts_row, text="Модель:", font=("Segoe UI", 9), bg=self.colors["card_bg"], fg=self.colors["text"]).pack(side=tk.LEFT, padx=(0, 4))
+        tk.Label(opts_row, text="Model:", font=("Segoe UI", 9), bg=self.colors["card_bg"], fg=self.colors["text"]).pack(side=tk.LEFT, padx=(0, 4))
         self.combo_model = ttk.Combobox(
             opts_row,
             values=self.get_model_combobox_values(),
@@ -384,7 +384,7 @@ class TranscriberApp:
         self.refresh_model_dropdown()
         self.combo_model.pack(side=tk.LEFT, padx=(0, 14))
 
-        tk.Label(opts_row, text="Язык:", font=("Segoe UI", 9), bg=self.colors["card_bg"], fg=self.colors["text"]).pack(side=tk.LEFT, padx=(0, 4))
+        tk.Label(opts_row, text="Language:", font=("Segoe UI", 9), bg=self.colors["card_bg"], fg=self.colors["text"]).pack(side=tk.LEFT, padx=(0, 4))
         self.combo_lang = ttk.Combobox(opts_row, values=["ru", "en", "auto"], width=6, font=("Segoe UI", 9))
         self.combo_lang.set("ru")
         self.combo_lang.pack(side=tk.LEFT, padx=(0, 14))
@@ -392,7 +392,7 @@ class TranscriberApp:
         self.var_silence = tk.BooleanVar(value=True)
         self.chk_silence = tk.Checkbutton(
             opts_row,
-            text="FFmpeg вырезка тишины",
+            text="FFmpeg silence trimming",
             variable=self.var_silence,
             font=("Segoe UI", 9),
             bg=self.colors["card_bg"],
@@ -402,7 +402,7 @@ class TranscriberApp:
         )
         self.chk_silence.pack(side=tk.LEFT)
 
-        # Действия (Transcribe + Stop)
+        # Actions (Transcribe + Stop)
         act_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
         act_row.pack(fill=tk.X, pady=(2, 0))
 
@@ -423,7 +423,7 @@ class TranscriberApp:
 
         self.btn_stop = tk.Button(
             act_row,
-            text="⏹ Стоп",
+            text="⏹ Stop",
             font=("Segoe UI", 10, "bold"),
             bg=self.colors["btn_stop"],
             fg=self.colors["btn_stop_fg"],
@@ -445,14 +445,14 @@ class TranscriberApp:
 
         self.lbl_status = tk.Label(
             ctrl_card,
-            text="Готов к работе. Выберите файл через «Change file»",
+            text="Ready. Select an audio file via 'Change file'",
             font=("Segoe UI", 9),
             bg=self.colors["card_bg"],
             fg=self.colors["text_muted"]
         )
         self.lbl_status.pack(anchor="w")
 
-        # 3. Терминал / Лог
+        # 3. Terminal / Logs
         log_card = tk.Frame(
             main_frame,
             bg=self.colors["card_bg"],
@@ -467,7 +467,7 @@ class TranscriberApp:
 
         tk.Label(
             log_top,
-            text="📝 Результат и журнал транскрибации:",
+            text="📝 Transcription Output & Logs:",
             font=("Segoe UI", 9, "bold"),
             bg=self.colors["card_bg"],
             fg=self.colors["text"]
@@ -475,7 +475,7 @@ class TranscriberApp:
 
         self.btn_open_folder = tk.Button(
             log_top,
-            text="📁 Папка",
+            text="📁 Folder",
             font=("Segoe UI", 8),
             bg=self.colors["btn_sub"],
             fg=self.colors["text"],
@@ -491,7 +491,7 @@ class TranscriberApp:
 
         self.btn_open_txt = tk.Button(
             log_top,
-            text="📄 Открыть .txt",
+            text="📄 Open .txt",
             font=("Segoe UI", 8),
             bg=self.colors["btn_sub"],
             fg=self.colors["text"],
@@ -507,7 +507,7 @@ class TranscriberApp:
 
         self.btn_copy = tk.Button(
             log_top,
-            text="📋 Копировать",
+            text="📋 Copy",
             font=("Segoe UI", 8),
             bg=self.colors["btn_sub"],
             fg=self.colors["text"],
@@ -522,7 +522,7 @@ class TranscriberApp:
 
         self.btn_clear = tk.Button(
             log_top,
-            text="🧹 Очистить",
+            text="🧹 Clear",
             font=("Segoe UI", 8),
             bg=self.colors["btn_sub"],
             fg=self.colors["text"],
@@ -569,14 +569,14 @@ class TranscriberApp:
         try:
             res = subprocess.run(["ffmpeg", "-version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             if res.returncode == 0:
-                self.log_system("FFmpeg обнаружен в системе (PATH).")
+                self.log_system("FFmpeg detected in system (PATH).")
         except FileNotFoundError:
-            self.log_error("FFmpeg НЕ найден в PATH! Нажмите кнопку «Справка / Команды ОС» для быстрой установки.")
+            self.log_error("FFmpeg was NOT found in PATH! Click 'Help / OS Setup' for quick installation.")
 
-    # --- КРОСС-ПЛАТФОРМЕННАЯ ДИАГНОСТИКА И КОМАНДЫ ДЛЯ СИСТЕМЫ ---
+    # --- CROSS-PLATFORM DIAGNOSTICS & SYSTEM SETUP COMMANDS ---
     def show_doctor_dialog(self):
         dialog = tk.Toplevel(self.root)
-        dialog.title("Диагностика системы и команды установки")
+        dialog.title("System Diagnostics & Installation Commands")
         dialog.geometry("660x540")
         dialog.minsize(600, 480)
         dialog.configure(bg=self.colors["bg"])
@@ -593,7 +593,7 @@ class TranscriberApp:
 
         tk.Label(
             pad,
-            text="🛠️ Команды установки для вашей операционной системы",
+            text="🛠️ Installation Commands for Your Operating System",
             font=("Segoe UI", 12, "bold"),
             bg=self.colors["bg"],
             fg=self.colors["text"]
@@ -602,18 +602,18 @@ class TranscriberApp:
         status_box = tk.Frame(pad, bg=self.colors["card_bg"], padx=12, pady=10, highlightthickness=1, highlightbackground=self.colors["card_border"])
         status_box.pack(fill=tk.X, pady=(0, 12))
 
-        accel_text = f"🟢 {self.device_display}" if self.has_accel else "🟡 Работает на CPU (аппаратное ускорение не задействовано)"
-        tk.Label(status_box, text=f"• Ускоритель: {accel_text}", font=("Segoe UI", 9), bg=self.colors["card_bg"], fg=self.colors["text"]).pack(anchor="w", pady=1)
+        accel_text = f"🟢 {self.device_display}" if self.has_accel else "🟡 Running on CPU (hardware acceleration unavailable)"
+        tk.Label(status_box, text=f"• Accelerator: {accel_text}", font=("Segoe UI", 9), bg=self.colors["card_bg"], fg=self.colors["text"]).pack(anchor="w", pady=1)
 
         ffmpeg_installed = False
         try:
             ffmpeg_installed = (subprocess.run(["ffmpeg", "-version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0)
         except Exception:
             pass
-        ffmpeg_text = "🟢 FFmpeg обнаружен" if ffmpeg_installed else "🔴 FFmpeg не найден"
-        tk.Label(status_box, text=f"• Медиа-библиотека: {ffmpeg_text}", font=("Segoe UI", 9), bg=self.colors["card_bg"], fg=self.colors["text"]).pack(anchor="w", pady=1)
+        ffmpeg_text = "🟢 FFmpeg detected" if ffmpeg_installed else "🔴 FFmpeg not found"
+        tk.Label(status_box, text=f"• Media engine: {ffmpeg_text}", font=("Segoe UI", 9), bg=self.colors["card_bg"], fg=self.colors["text"]).pack(anchor="w", pady=1)
 
-        tk.Label(pad, text="Команды для Терминала / Консоли (кликните «Копировать»):", font=("Segoe UI", 9, "bold"), bg=self.colors["bg"], fg=self.colors["accent"]).pack(anchor="w", pady=(6, 4))
+        tk.Label(pad, text="Terminal / Console Commands (click 'Copy'):", font=("Segoe UI", 9, "bold"), bg=self.colors["bg"], fg=self.colors["accent"]).pack(anchor="w", pady=(6, 4))
 
         def add_cmd_block(parent, title, cmd):
             frame = tk.Frame(parent, bg=self.colors["card_bg"], padx=10, pady=8, highlightthickness=1, highlightbackground=self.colors["card_border"])
@@ -632,33 +632,33 @@ class TranscriberApp:
             def copy_this():
                 self.root.clipboard_clear()
                 self.root.clipboard_append(cmd)
-                btn_cp.config(text="✓ Скопировано!", bg=self.colors["success"], fg="#11111b")
-                dialog.after(1500, lambda: btn_cp.config(text="📋 Копировать", bg=self.colors["btn_sub"], fg=self.colors["text"]))
+                btn_cp.config(text="✓ Copied!", bg=self.colors["success"], fg="#11111b")
+                dialog.after(1500, lambda: btn_cp.config(text="📋 Copy", bg=self.colors["btn_sub"], fg=self.colors["text"]))
 
-            btn_cp = tk.Button(row, text="📋 Копировать", font=("Segoe UI", 8), bg=self.colors["btn_sub"], fg=self.colors["text"], activebackground=self.colors["btn_sub_hover"], relief="flat", padx=10, pady=2, cursor="hand2", command=copy_this)
+            btn_cp = tk.Button(row, text="📋 Copy", font=("Segoe UI", 8), bg=self.colors["btn_sub"], fg=self.colors["text"], activebackground=self.colors["btn_sub_hover"], relief="flat", padx=10, pady=2, cursor="hand2", command=copy_this)
             btn_cp.pack(side=tk.RIGHT)
 
-        # Команды зависят от ОС
+        # OS-specific setup commands
         if sys.platform == "darwin":
             # macOS
-            add_cmd_block(pad, "1. Установка PyTorch (с поддержкой Apple Silicon Metal MPS):", "pip3 install torch torchvision torchaudio")
-            add_cmd_block(pad, "2. Установка FFmpeg через Homebrew:", "brew install ffmpeg")
-            add_cmd_block(pad, "3. Установка библиотеки Whisper:", "pip3 install -U openai-whisper")
+            add_cmd_block(pad, "1. Install PyTorch (Apple Silicon Metal MPS):", "pip3 install torch torchvision torchaudio")
+            add_cmd_block(pad, "2. Install FFmpeg via Homebrew:", "brew install ffmpeg")
+            add_cmd_block(pad, "3. Install Whisper library:", "pip3 install -U openai-whisper")
         elif sys.platform == "win32":
             # Windows
-            add_cmd_block(pad, "1. Установка PyTorch с CUDA (NVIDIA):", "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124")
-            add_cmd_block(pad, "2. Установка FFmpeg (Windows winget):", "winget install Gyan.FFmpeg")
-            add_cmd_block(pad, "3. Установка библиотеки Whisper:", "pip install -U openai-whisper")
+            add_cmd_block(pad, "1. Install PyTorch with CUDA (NVIDIA):", "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124")
+            add_cmd_block(pad, "2. Install FFmpeg (Windows winget):", "winget install Gyan.FFmpeg")
+            add_cmd_block(pad, "3. Install Whisper library:", "pip install -U openai-whisper")
         else:
             # Linux (Ubuntu / Debian / Arch / Fedora)
-            add_cmd_block(pad, "1. Установка PyTorch с CUDA (Linux NVIDIA):", "pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124")
-            add_cmd_block(pad, "2. Установка FFmpeg (Ubuntu / Debian):", "sudo apt update && sudo apt install -y ffmpeg")
-            add_cmd_block(pad, "3. Установка FFmpeg (Arch Linux / Manjaro):", "sudo pacman -S ffmpeg")
-            add_cmd_block(pad, "4. Установка Whisper:", "pip3 install -U openai-whisper")
+            add_cmd_block(pad, "1. Install PyTorch with CUDA (Linux NVIDIA):", "pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124")
+            add_cmd_block(pad, "2. Install FFmpeg (Ubuntu / Debian):", "sudo apt update && sudo apt install -y ffmpeg")
+            add_cmd_block(pad, "3. Install FFmpeg (Arch Linux / Manjaro):", "sudo pacman -S ffmpeg")
+            add_cmd_block(pad, "4. Install Whisper:", "pip3 install -U openai-whisper")
 
         btn_close = tk.Button(
             pad,
-            text="Закрыть",
+            text="Close",
             font=("Segoe UI", 9, "bold"),
             bg=self.colors["btn_file"],
             fg="#ffffff",
@@ -671,43 +671,43 @@ class TranscriberApp:
         btn_close.pack(fill=tk.X, pady=(12, 0))
 
     def on_change_file(self):
-        """Открытие диалога выбора файла."""
+        """Open file chooser dialog."""
         filetypes = [
-            ("Аудиофайлы", "*.mp3 *.m4a *.wav *.ogg *.flac *.aac *.wma *.opus *.m4b"),
-            ("Все файлы", "*.*")
+            ("Audio Files", "*.mp3 *.m4a *.wav *.ogg *.flac *.aac *.wma *.opus *.m4b"),
+            ("All Files", "*.*")
         ]
-        chosen = filedialog.askopenfilename(title="Выберите аудиофайл", filetypes=filetypes)
+        chosen = filedialog.askopenfilename(title="Select Audio File", filetypes=filetypes)
         if chosen:
             chosen = os.path.normpath(chosen)
             self.selected_file_path = chosen
             self.output_directory = os.path.dirname(chosen)
 
             filename = os.path.basename(chosen)
-            self.lbl_selected_file.config(text=f"Выбран: {filename}", fg=self.colors["text"], font=("Segoe UI", 9, "bold"))
+            self.lbl_selected_file.config(text=f"Selected: {filename}", fg=self.colors["text"], font=("Segoe UI", 9, "bold"))
 
             name_without_ext, _ = os.path.splitext(filename)
             default_base_name = f"{name_without_ext}_final"
             self.entry_name.delete(0, tk.END)
             self.entry_name.insert(0, default_base_name)
 
-            self.lbl_status.config(text=f"Файл готов: {filename}. Нажмите «Transcribe».", fg=self.colors["accent"])
-            self.log_system(f"Выбран файл: {chosen}")
+            self.lbl_status.config(text=f"File ready: {filename}. Click 'Transcribe'.", fg=self.colors["accent"])
+            self.log_system(f"Selected file: {chosen}")
 
     def log(self, text, tag="stdout"):
         self.txt_log.insert(tk.END, text, tag)
         self.txt_log.see(tk.END)
 
     def log_system(self, msg):
-        self.log_queue.put((f"[СИСТЕМА] {msg}\n", "system"))
+        self.log_queue.put((f"[SYSTEM] {msg}\n", "system"))
 
     def log_success(self, msg):
-        self.log_queue.put((f"[ГОТОВО] {msg}\n", "success"))
+        self.log_queue.put((f"[SUCCESS] {msg}\n", "success"))
 
     def log_warning(self, msg):
-        self.log_queue.put((f"[ВНИМАНИЕ] {msg}\n", "warning"))
+        self.log_queue.put((f"[WARNING] {msg}\n", "warning"))
 
     def log_error(self, msg):
-        self.log_queue.put((f"[ОШИБКА] {msg}\n", "error"))
+        self.log_queue.put((f"[ERROR] {msg}\n", "error"))
 
     def process_log_queue(self):
         while not self.log_queue.empty():
@@ -726,7 +726,7 @@ class TranscriberApp:
         if text:
             self.root.clipboard_clear()
             self.root.clipboard_append(text)
-            self.lbl_status.config(text="Текст скопирован в буфер обмена!", fg=self.colors["success"])
+            self.lbl_status.config(text="Text copied to clipboard!", fg=self.colors["success"])
 
     def open_output_folder(self):
         if self.output_directory and os.path.isdir(self.output_directory):
@@ -741,7 +741,7 @@ class TranscriberApp:
         if busy:
             self.cancel_requested = False
             self.btn_transcribe.config(
-                text="⏳ Идет транскрибация...",
+                text="⏳ Transcribing...",
                 state=tk.DISABLED,
                 bg=self.colors["btn_sub"],
                 fg=self.colors["text_muted"]
@@ -762,12 +762,12 @@ class TranscriberApp:
             self.progress_bar.stop()
 
     def on_stop_requested(self):
-        """Мягкая отмена транскрибации."""
+        """Gracefully cancel transcription."""
         if not self.is_processing:
             return
         self.cancel_requested = True
-        self.log_warning("Запрошена остановка процесса пользователем...")
-        self.lbl_status.config(text="Остановка процесса...", fg=self.colors["warning"])
+        self.log_warning("Stop requested by user...")
+        self.lbl_status.config(text="Stopping process...", fg=self.colors["warning"])
         if self.ffmpeg_proc and self.ffmpeg_proc.poll() is None:
             try:
                 self.ffmpeg_proc.terminate()
@@ -779,11 +779,11 @@ class TranscriberApp:
             return
 
         if not DEPENDENCIES_AVAILABLE:
-            messagebox.showerror("Ошибка", f"Не найдены зависимости torch / whisper:\n{IMPORT_ERROR_MSG}")
+            messagebox.showerror("Error", f"Missing torch / whisper dependencies:\n{IMPORT_ERROR_MSG}")
             return
 
         if not self.selected_file_path or not os.path.exists(self.selected_file_path):
-            messagebox.showwarning("Выберите файл", "Сначала выберите файл через кнопку «Change file».")
+            messagebox.showwarning("Select File", "Please select an audio file first using 'Change file'.")
             return
 
         raw_name = self.entry_name.get().strip()
@@ -792,7 +792,7 @@ class TranscriberApp:
             name_without_ext, _ = os.path.splitext(filename)
             raw_name = f"{name_without_ext}_final"
 
-        # Строгая кросс-платформенная санитизация
+        # Strict cross-platform filename sanitization
         base_name = os.path.basename(raw_name)
         for char in '<>:"/\\|?*':
             base_name = base_name.replace(char, "_")
@@ -819,7 +819,7 @@ class TranscriberApp:
         ).start()
 
     def download_model_with_progress(self, model_name):
-        """Скачивает модель из OpenAI с отображением реального прогресса в GUI."""
+        """Download Whisper model checkpoint with real-time GUI progress tracking."""
         if not hasattr(whisper, "_MODELS") or model_name not in whisper._MODELS:
             return True
 
@@ -831,7 +831,7 @@ class TranscriberApp:
         if os.path.exists(dest_path) and os.path.getsize(dest_path) > 1024 * 1024:
             return True
 
-        self.log_system(f"Модель '{model_name}' отсутствует в кэше. Начинаем загрузку...")
+        self.log_system(f"Model '{model_name}' not found in cache. Starting download...")
         temp_path = dest_path + ".tmp"
 
         self.root.after(0, lambda: self.progress_bar.config(mode="determinate", maximum=100, value=0))
@@ -849,7 +849,7 @@ class TranscriberApp:
                         out_file.close()
                         if os.path.exists(temp_path):
                             os.remove(temp_path)
-                        self.log_warning("Загрузка модели отменена.")
+                        self.log_warning("Model download canceled.")
                         return False
 
                     chunk = response.read(chunk_size)
@@ -864,14 +864,14 @@ class TranscriberApp:
                         percent = int(downloaded * 100 / total_size)
                         mb_done = downloaded / (1024 * 1024)
                         mb_tot = total_size / (1024 * 1024)
-                        status_str = f"Загрузка {model_name}: {mb_done:.1f} из {mb_tot:.1f} МБ ({percent}%)"
+                        status_str = f"Downloading {model_name}: {mb_done:.1f} of {mb_tot:.1f} MB ({percent}%)"
                         self.root.after(0, lambda p=percent, s=status_str: [
                             self.progress_bar.config(value=p),
                             self.lbl_status.config(text=s, fg=self.colors["accent"])
                         ])
 
             os.replace(temp_path, dest_path)
-            self.log_success(f"Модель '{model_name}' скачана и сохранена в кэш!")
+            self.log_success(f"Model '{model_name}' successfully downloaded and cached!")
             self.root.after(0, self.refresh_model_dropdown)
             return True
         except Exception as e:
@@ -880,7 +880,7 @@ class TranscriberApp:
                     os.remove(temp_path)
                 except Exception:
                     pass
-            self.log_error(f"Ошибка загрузки модели: {e}")
+            self.log_error(f"Error downloading model: {e}")
             return False
 
     def run_pipeline(self, source_file, out_dir, base_name, model_name, lang, use_silence):
@@ -893,21 +893,21 @@ class TranscriberApp:
 
         t0 = time.time()
         try:
-            self.lbl_status.config(text="Подготовка аудиофайла...", fg=self.colors["accent"])
-            self.log_system(f"Старт обработки: {os.path.basename(source_file)}")
-            self.log_system(f"Результаты: {base_name}.txt и {base_name}.json")
+            self.lbl_status.config(text="Preparing audio file...", fg=self.colors["accent"])
+            self.log_system(f"Starting processing: {os.path.basename(source_file)}")
+            self.log_system(f"Outputs: {base_name}.txt and {base_name}.json")
 
             target_audio = source_file
             cleaned_audio = os.path.join(out_dir, f"{base_name}_cleaned.wav")
 
-            # 1. FFmpeg
+            # 1. FFmpeg preprocessing
             if use_silence:
                 if self.cancel_requested:
                     return
 
                 if not os.path.exists(cleaned_audio):
-                    self.lbl_status.config(text="FFmpeg: вырезка пауз и тишины...", fg=self.colors["accent"])
-                    self.log_system("Вырезаем тишину и конвертируем в моно 16 кГц...")
+                    self.lbl_status.config(text="FFmpeg: trimming pauses and silence...", fg=self.colors["accent"])
+                    self.log_system("Removing silence and converting to 16 kHz mono...")
 
                     ffmpeg_cmd = [
                         "ffmpeg", "-y", "-i", source_file,
@@ -926,24 +926,24 @@ class TranscriberApp:
                         )
                         _, stderr_bytes = self.ffmpeg_proc.communicate()
                     except FileNotFoundError:
-                        self.log_error("FFmpeg не обнаружен в системе (PATH)! Нажмите кнопку «Справка / Команды ОС» для быстрой установки.")
-                        raise RuntimeError("FFmpeg не найден. Пожалуйста, установите FFmpeg.")
+                        self.log_error("FFmpeg not found in PATH! Click 'Help / OS Setup' for quick installation.")
+                        raise RuntimeError("FFmpeg not found. Please install FFmpeg.")
 
                     if self.cancel_requested:
-                        self.log_warning("Процесс отменен во время работы FFmpeg.")
+                        self.log_warning("Process canceled during FFmpeg preprocessing.")
                         if os.path.exists(cleaned_audio):
                             os.remove(cleaned_audio)
                         return
 
                     if self.ffmpeg_proc.returncode == 0:
-                        self.log_success(f"Аудио очищено: {os.path.basename(cleaned_audio)}")
+                        self.log_success(f"Audio preprocessed: {os.path.basename(cleaned_audio)}")
                         target_audio = cleaned_audio
                     else:
                         err_text = stderr_bytes.decode("utf-8", errors="ignore")
-                        self.log_warning(f"FFmpeg вернул предупреждение: {err_text[:120]}")
+                        self.log_warning(f"FFmpeg returned warning: {err_text[:120]}")
                         target_audio = source_file
                 else:
-                    self.log_system(f"Используем готовый очищенный файл: {os.path.basename(cleaned_audio)}")
+                    self.log_system(f"Using pre-existing cleaned file: {os.path.basename(cleaned_audio)}")
                     target_audio = cleaned_audio
             else:
                 target_audio = source_file
@@ -951,7 +951,7 @@ class TranscriberApp:
             if self.cancel_requested:
                 return
 
-            # 2. Проверка и скачивание модели
+            # 2. Check and download model
             if not self.is_model_cached(model_name):
                 download_ok = self.download_model_with_progress(model_name)
                 if not download_ok or self.cancel_requested:
@@ -962,11 +962,11 @@ class TranscriberApp:
                 self.progress_bar.start(10)
             ])
 
-            # 3. Загрузка в память и освобождение VRAM / Metal
+            # 3. Load model into memory and manage VRAM / Metal
             device = self.device_str
 
             if self.loaded_model is not None and self.loaded_model_name != model_name:
-                self.log_system(f"Выгрузка из памяти предыдущей модели '{self.loaded_model_name}'...")
+                self.log_system(f"Unloading previous model '{self.loaded_model_name}' from memory...")
                 del self.loaded_model
                 self.loaded_model = None
                 if device == "cuda":
@@ -975,31 +975,31 @@ class TranscriberApp:
                     torch.mps.empty_cache()
 
             if self.loaded_model is None:
-                self.lbl_status.config(text=f"Загрузка модели '{model_name}' на {device.upper()}...", fg=self.colors["accent"])
-                self.log_system(f"Загружаем модель '{model_name}' в память...")
+                self.lbl_status.config(text=f"Loading model '{model_name}' on {device.upper()}...", fg=self.colors["accent"])
+                self.log_system(f"Loading model '{model_name}' into memory...")
                 try:
                     self.loaded_model = whisper.load_model(model_name, device=device)
                     self.loaded_model_name = model_name
-                    self.log_system(f"Модель '{model_name}' готова к работе на {device.upper()}!")
+                    self.log_system(f"Model '{model_name}' ready on {device.upper()}!")
                 except Exception as load_err:
                     if device != "cpu":
-                        self.log_warning(f"Не удалось инициализировать {device.upper()}: {load_err}. Автоматический переход на CPU...")
+                        self.log_warning(f"Failed to initialize {device.upper()}: {load_err}. Falling back to CPU...")
                         device = "cpu"
                         self.device_str = "cpu"
                         self.loaded_model = whisper.load_model(model_name, device="cpu")
                         self.loaded_model_name = model_name
-                        self.log_system(f"Модель '{model_name}' успешно загружена на CPU!")
+                        self.log_system(f"Model '{model_name}' successfully loaded on CPU!")
                     else:
                         raise load_err
             else:
-                self.log_system(f"Модель '{model_name}' уже готова в памяти.")
+                self.log_system(f"Model '{model_name}' already active in memory.")
 
             if self.cancel_requested:
                 return
 
-            # 4. Транскрибация Whisper
-            self.lbl_status.config(text="Транскрибация... Текст выводится в реальном времени.", fg=self.colors["accent"])
-            self.log_system(f"Транскрибируем (язык: {lang}). Текст записи:")
+            # 4. Whisper transcription
+            self.lbl_status.config(text="Transcribing... Live segments stream below.", fg=self.colors["accent"])
+            self.log_system(f"Transcribing (language: {lang}). Streamed transcript:")
             self.log_system("-" * 60)
 
             t_trans = time.time()
@@ -1015,14 +1015,14 @@ class TranscriberApp:
             result = self.loaded_model.transcribe(**transcribe_kwargs)
 
             if self.cancel_requested:
-                self.log_warning("Транскрибация прервана пользователем.")
+                self.log_warning("Transcription stopped by user.")
                 return
 
             self.log_system("-" * 60)
             elapsed_trans = round(time.time() - t_trans, 2)
-            self.log_success(f"Распознавание завершено за: {elapsed_trans} сек.")
+            self.log_success(f"Recognition completed in: {elapsed_trans} s.")
 
-            # 5. Атомарное сохранение результатов
+            # 5. Atomic file persistence
             txt_path = os.path.join(out_dir, f"{base_name}.txt")
             json_path = os.path.join(out_dir, f"{base_name}.json")
 
@@ -1038,14 +1038,14 @@ class TranscriberApp:
             os.replace(tmp_txt, txt_path)
             os.replace(tmp_json, json_path)
 
-            self.log_success(f"Файлы сохранены:\n{txt_path}\n{json_path}")
+            self.log_success(f"Files saved successfully:\n{txt_path}\n{json_path}")
             self.last_saved_txt = txt_path
 
             total_elapsed = round(time.time() - t0, 2)
-            self.log_success(f"🎉 Готово! Всего времени: {total_elapsed} сек.")
+            self.log_success(f"🎉 Complete! Total elapsed time: {total_elapsed} s.")
 
             self.root.after(0, lambda: [
-                self.lbl_status.config(text=f"✅ Готово за {total_elapsed} с!", fg=self.colors["success"]),
+                self.lbl_status.config(text=f"✅ Complete in {total_elapsed} s!", fg=self.colors["success"]),
                 self.btn_open_folder.config(state=tk.NORMAL),
                 self.btn_open_txt.config(state=tk.NORMAL)
             ])
@@ -1053,14 +1053,14 @@ class TranscriberApp:
         except Exception as e:
             if not self.cancel_requested:
                 err_str = str(e)
-                self.log_error(f"Ошибка: {err_str}")
+                self.log_error(f"Error: {err_str}")
                 self.root.after(0, lambda: [
-                    self.lbl_status.config(text=f"❌ Ошибка: {err_str}", fg=self.colors["error"]),
-                    messagebox.showerror("Ошибка", err_str)
+                    self.lbl_status.config(text=f"❌ Error: {err_str}", fg=self.colors["error"]),
+                    messagebox.showerror("Error", err_str)
                 ])
             else:
-                self.log_warning("Процесс был остановлен.")
-                self.root.after(0, lambda: self.lbl_status.config(text="Процесс остановлен.", fg=self.colors["warning"]))
+                self.log_warning("Process was stopped.")
+                self.root.after(0, lambda: self.lbl_status.config(text="Process stopped.", fg=self.colors["warning"]))
         finally:
             sys.stdout = old_stdout
             sys.stderr = old_stderr

@@ -1,4 +1,4 @@
-# Зависимости для macOS (поддержка Apple Silicon Metal MPS и Intel)
+# Dependencies for macOS (Apple Silicon Metal MPS and Intel support)
 torch>=2.4.0
 torchvision
 torchaudio

@@ -35,7 +35,7 @@ class TestMultiPlatformExhaustive(unittest.TestCase):
         os.makedirs(cls.output_dir, exist_ok=True)
         cls.test_audio = os.path.join(cls.work_dir, "test_speech.wav")
 
-        # Если аудио нет, создаем
+        # If audio does not exist, synthesize a test tone via ffmpeg
         if not os.path.exists(cls.test_audio):
             cmd = [
                 "ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=1000:duration=3",
@@ -43,93 +43,92 @@ class TestMultiPlatformExhaustive(unittest.TestCase):
             ]
             subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    # === ТЕСТ 1: Чистый режим CPU (Linux серверы / Mac без CUDA / виртуальные машины) ===
+    # === TEST 1: Pure CPU Mode (Linux headless / macOS without CUDA / VM environments) ===
     def test_01_pure_cpu_mode_transcription(self):
-        print("\n[ТЕСТ 1] Режим CPU (эмуляция Linux / macOS без CUDA)...")
-        # Принудительно используем CPU
+        print("\n[TEST 1] Pure CPU mode test (emulating Linux / macOS without CUDA)...")
         device = "cpu"
         
         t0 = time.time()
         model = whisper.load_model("tiny", device=device)
         load_time = round(time.time() - t0, 2)
-        print(f"  [OK] Модель 'tiny' загружена на CPU за {load_time} с.")
+        print(f"  [OK] Model 'tiny' loaded on CPU in {load_time} s.")
 
         t_trans = time.time()
         result = model.transcribe(
             self.test_audio,
             language="ru",
             condition_on_previous_text=False,
-            fp16=False, # Обязательно False для CPU
+            fp16=False,  # Must be False for CPU
             verbose=False
         )
         trans_time = round(time.time() - t_trans, 2)
         text = result.get("text", "").strip()
-        print(f"  [OK] Распознавание на CPU выполнено за {trans_time} с: \"{text[:50]}...\"")
-        self.assertGreater(len(text), 0, "Текст на CPU не должен быть пустым")
+        print(f"  [OK] CPU transcription completed in {trans_time} s: \"{text[:50]}...\"")
+        self.assertGreater(len(text), 0, "CPU transcription output must not be empty")
 
-    # === ТЕСТ 2: Автоматический Fallback с упавшего ускорителя на CPU ===
+    # === TEST 2: Automatic Fallback to CPU on Accelerator Failure ===
     def test_02_accelerator_fallback_to_cpu(self):
-        print("\n[ТЕСТ 2] Проверка авто-переключения на CPU при сбое ускорителя...")
+        print("\n[TEST 2] Testing accelerator fallback to CPU upon failure...")
         
-        # Симулируем сценарий: попытка загрузки на несуществующее устройство "cuda:99"
+        # Simulate scenario: attempt loading on non-existent device "cuda:99"
         model = None
         device = "cuda:99"
         try:
             model = whisper.load_model("tiny", device=device)
         except Exception:
-            # Сработал fallback на CPU
+            # Fallback triggered
             device = "cpu"
             model = whisper.load_model("tiny", device="cpu")
 
         self.assertIsNotNone(model)
         self.assertEqual(device, "cpu")
-        print("  [OK] Автоматический fallback на CPU отработал корректно.")
+        print("  [OK] Automatic fallback to CPU executed cleanly.")
 
-    # === ТЕСТ 3: Кроссплатформенное открытие путей (Linux xdg-open / macOS open / Windows startfile) ===
+    # === TEST 3: Cross-Platform File & Folder Opening ===
     def test_03_cross_platform_open_path(self):
-        print("\n[ТЕСТ 3] Проверка открытия файлов/папок на Linux, macOS и Windows...")
+        print("\n[TEST 3] Testing cross-platform file/folder opener on Linux, macOS, and Windows...")
         test_path = self.output_dir
 
-        # 1. Тест Linux (xdg-open)
+        # 1. Linux test (xdg-open)
         with patch("sys.platform", "linux"), patch("subprocess.run") as mock_sub:
             open_path_in_os(test_path)
             mock_sub.assert_called_once_with(["xdg-open", test_path], check=False)
-            print("  [OK] Linux: корректный вызов xdg-open.")
+            print("  [OK] Linux: correct invocation of xdg-open.")
 
-        # 2. Тест macOS (open)
+        # 2. macOS test (open)
         with patch("sys.platform", "darwin"), patch("subprocess.run") as mock_sub:
             open_path_in_os(test_path)
             mock_sub.assert_called_once_with(["open", test_path], check=False)
-            print("  [OK] macOS: корректный вызов open.")
+            print("  [OK] macOS: correct invocation of open.")
 
-        # 3. Тест Windows (os.startfile)
+        # 3. Windows test (os.startfile)
         if sys.platform == "win32":
             with patch("os.startfile") as mock_start:
                 open_path_in_os(test_path)
                 mock_start.assert_called_once_with(test_path)
-                print("  [OK] Windows: корректный вызов os.startfile.")
+                print("  [OK] Windows: correct invocation of os.startfile.")
 
-    # === ТЕСТ 4: Флаги процессов subprocess для Linux и macOS ===
+    # === TEST 4: Subprocess Execution Flags for Linux & macOS ===
     def test_04_subprocess_flags(self):
-        print("\n[ТЕСТ 4] Проверка флагов запуска процессов subprocess...")
+        print("\n[TEST 4] Testing subprocess creation flags...")
         with patch("sys.platform", "linux"):
             flags = get_subprocess_creation_flags()
-            self.assertEqual(flags, 0, "На Linux флаги должны быть 0")
+            self.assertEqual(flags, 0, "Linux creation flags must be 0")
             print("  [OK] Linux flags = 0.")
 
         with patch("sys.platform", "darwin"):
             flags = get_subprocess_creation_flags()
-            self.assertEqual(flags, 0, "На macOS флаги должны быть 0")
+            self.assertEqual(flags, 0, "macOS creation flags must be 0")
             print("  [OK] macOS flags = 0.")
 
         with patch("sys.platform", "win32"):
             flags = get_subprocess_creation_flags()
-            self.assertEqual(flags, subprocess.CREATE_NO_WINDOW, "На Windows должен быть CREATE_NO_WINDOW")
+            self.assertEqual(flags, subprocess.CREATE_NO_WINDOW, "Windows creation flag must be CREATE_NO_WINDOW")
             print("  [OK] Windows flags = CREATE_NO_WINDOW.")
 
-    # === ТЕСТ 5: Проверка чистоты переводов строк (LF) для Linux/macOS скриптов ===
+    # === TEST 5: POSIX LF Line Endings for Linux & macOS Scripts ===
     def test_05_posix_line_endings(self):
-        print("\n[ТЕСТ 5] Проверка формата переводов строк (LF) для скриптов Linux и macOS...")
+        print("\n[TEST 5] Checking strict POSIX LF line endings for Linux and macOS scripts...")
         scripts_to_check = [
             os.path.join(PROJECT_ROOT, "linux", "run.sh"),
             os.path.join(PROJECT_ROOT, "linux", "build_linux.sh"),
@@ -139,21 +138,20 @@ class TestMultiPlatformExhaustive(unittest.TestCase):
         ]
 
         for s_path in scripts_to_check:
-            self.assertTrue(os.path.exists(s_path), f"Файл не найден: {s_path}")
+            self.assertTrue(os.path.exists(s_path), f"File not found: {s_path}")
             with open(s_path, "rb") as f:
                 content = f.read()
-                # В Linux/macOS скриптах не должно быть байтов \r\n (CRLF)
-                self.assertNotIn(b"\r\n", content, f"Обнаружен Windows CRLF в POSIX скрипте: {os.path.basename(s_path)}")
-                print(f"  [OK] {os.path.basename(s_path)} имеет строгий POSIX LF формат.")
+                # Linux/macOS scripts must not contain CRLF (\r\n) bytes
+                self.assertNotIn(b"\r\n", content, f"Windows CRLF detected in POSIX script: {os.path.basename(s_path)}")
+                print(f"  [OK] {os.path.basename(s_path)} has valid POSIX LF line endings.")
 
-    # === ТЕСТ 6: Симуляция отсутствия FFmpeg (Graceful Failure) ===
+    # === TEST 6: Graceful Handling of Missing FFmpeg ===
     def test_06_missing_ffmpeg_handling(self):
-        print("\n[ТЕСТ 6] Симуляция отсутствия FFmpeg в системе...")
+        print("\n[TEST 6] Simulating missing FFmpeg binary in system PATH...")
         with patch("subprocess.Popen", side_effect=FileNotFoundError("ffmpeg not found")):
-            # Проверяем, что приложение безопасно фиксирует ошибку
             with self.assertRaises(Exception):
-                raise RuntimeError("FFmpeg не найден. Установите FFmpeg.")
-        print("  [OK] Отсутствие FFmpeg корректно перехватывается без падения всей системы.")
+                raise RuntimeError("FFmpeg not found. Please install FFmpeg.")
+        print("  [OK] Missing FFmpeg is handled gracefully without application crash.")
 
 
 def run_all():
