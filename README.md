@@ -1,175 +1,211 @@
-# 🎙️ Whisper Transcriber — Cross-Platform AI Audio Transcription
+# 🎙️ Whisper Transcriber
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue?logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/Platforms-Windows%20%7C%20Linux%20%7C%20macOS-success" alt="Platforms">
-  <img src="https://img.shields.io/badge/Acceleration-NVIDIA%20CUDA%20%7C%20Apple%20Silicon%20MPS-orange" alt="Hardware Acceleration">
-  <img src="https://img.shields.io/badge/Engine-OpenAI%20Whisper-brightgreen" alt="Whisper">
+  <strong>High-performance, cross-platform desktop application for local AI audio transcription with silence trimming and hardware acceleration.</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB?logo=python&logoColor=white" alt="Python Versions">
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-success" alt="Platforms">
+  <img src="https://img.shields.io/badge/Hardware%20Accel-NVIDIA%20CUDA%20%7C%20Apple%20Silicon%20MPS-orange" alt="Hardware Acceleration">
+  <img src="https://img.shields.io/badge/Engine-OpenAI%20Whisper-412991?logo=openai&logoColor=white" alt="Whisper">
+  <img src="https://img.shields.io/badge/Audio%20Processing-FFmpeg-007808?logo=ffmpeg&logoColor=white" alt="FFmpeg">
   <img src="https://img.shields.io/badge/License-All%20Rights%20Reserved-red" alt="License">
 </p>
 
-**Whisper Transcriber** — современное, быстрое и безопасное кроссплатформенное приложение для транскрибации аудио в текст. Работает полностью локально (офлайн) на вашем компьютере, поддерживает аппаратное ускорение на **NVIDIA RTX (CUDA)** и **Apple Silicon M1-M4 (Metal MPS)**, автоматически удаляет паузы и тишину через **FFmpeg**, а также выводит распознанный текст в реальном времени.
+---
+
+## 📖 Overview
+
+**Whisper Transcriber** is a secure, standalone desktop application engineered for fast, offline speech-to-text transcription. It pairs **OpenAI Whisper** with **FFmpeg** audio preprocessing, offering full hardware acceleration across **NVIDIA GPUs (CUDA with TF32)**, **Apple Silicon chips (Metal MPS)**, and a resilient **CPU fallback**.
+
+All processing runs entirely on your local machine — your audio and transcripts never leave your hardware.
 
 ---
 
-## 📥 Инсталляторы и релизы (Downloads & Installers)
+## 📥 Releases & Installers
 
-Выберите готовый пакет для вашей операционной системы:
+Pre-built binaries and standalone distribution packages:
 
-| Операционная система | Формат инсталлятора | Ссылка на загрузку (GitHub Releases) | Аппаратное ускорение | Совместимость |
+| Platform | Package Format | Download Link (GitHub Releases) | Hardware Acceleration | Compatibility |
 | :--- | :--- | :--- | :--- | :--- |
-| **🪟 Windows** | Портативный архив `.zip` (внутри `Transcriber.exe`) | [**⬇️ Скачать для Windows (x64)**](https://github.com/w1sely/whisper-transcriber/releases/latest/download/Transcriber-Windows-x64.zip)<br>*(Распаковать и запустить `Transcriber.exe`)* | NVIDIA CUDA (RTX/GTX) + CPU | Windows 10, 11 (64-bit) |
-| **🐧 Linux** | Автономный бинарник `.tar.gz` / `.desktop` | [**⬇️ Скачать для Linux (x86_64)**](https://github.com/w1sely/whisper-transcriber/releases/latest/download/Transcriber-Linux-x86_64.tar.gz)<br>*(Или запуск скриптом `linux/run.sh`)* | NVIDIA CUDA / ROCm / CPU | Ubuntu, Debian, Fedora, Arch |
-| **🍏 macOS** | Нативный образ `.dmg` / `.app` | [**⬇️ Скачать для macOS (.dmg)**](https://github.com/w1sely/whisper-transcriber/releases/latest/download/WhisperTranscriber-macOS.dmg)<br>*(Или запуск через `macos/run_mac.command`)* | Apple Silicon (M1/M2/M3/M4 Metal MPS) | macOS 12.0+ (Monterey, Ventura, Sonoma, Sequoia) |
-
-> 💡 **Примечание**: Все бинарные сборки содержат графический интерфейс, автоматическое определение оборудования и менеджер загрузки моделей Whisper.
+| **🪟 Windows** | Portable Archive (`.zip` with `Transcriber.exe`) | [**⬇️ Download for Windows (x64)**](https://github.com/w1sely/whisper-transcriber/releases/latest/download/Transcriber-Windows-x64.zip)<br>*(Extract and launch `Transcriber.exe`)* | NVIDIA CUDA (RTX / GTX) + CPU | Windows 10, 11 (64-bit) |
+| **🐧 Linux** | Standalone Binary (`.tar.gz`) / `.desktop` | [**⬇️ Download for Linux (x86_64)**](https://github.com/w1sely/whisper-transcriber/releases/latest/download/Transcriber-Linux-x86_64.tar.gz)<br>*(Or run via `linux/run.sh`)* | NVIDIA CUDA / ROCm / CPU | Ubuntu, Debian, Fedora, Arch Linux |
+| **🍏 macOS** | Native Bundle (`.dmg` / `.app`) | [**⬇️ Download for macOS (.dmg)**](https://github.com/w1sely/whisper-transcriber/releases/latest/download/WhisperTranscriber-macOS.dmg)<br>*(Or launch via `macos/run_mac.command`)* | Apple Silicon (M1/M2/M3/M4 Metal MPS) | macOS 12.0+ (Monterey, Ventura, Sonoma, Sequoia) |
 
 ---
 
-## 🌟 Ключевые возможности
+## ✨ Key Features
 
-* **Кроссплатформенность**: нативная поддержка **Windows**, **Linux** и **macOS**.
-* **Аппаратное ускорение**:
-  * 🪟 **Windows & 🐧 Linux**: NVIDIA CUDA (поддержка тензорных ядер и режима TF32).
-  * 🍏 **macOS**: Apple Silicon Metal Performance Shaders (MPS на чипах M1/M2/M3/M4).
-  * 💻 **Универсальный CPU Fallback**: автоматическое переключение на процессор при отсутствии дискретной графики.
-* **Физическое удаление пауз (FFmpeg `silenceremove`)**: автоматическая нормализация аудио в моно 16 кГц и вырезка пустых пауз перед подачей в нейросеть, что ускоряет распознавание и экономит память.
-* **Интеллектуальный менеджер моделей**:
-  * Поддерживаются модели: `turbo` (рекомендуемая), `large-v3`, `medium`, `small`, `base`, `tiny`.
-  * Автоматическая проверка локального кэша (`~/.cache/whisper`) с пометками `[✓ Скачана]` / `[⬇ Скачать]`.
-  * Наглядная индикация прогресса загрузки новых моделей из сети (МБ и %).
-* **Безопасность и надежность**:
-  * 🛡️ **Защита от Path Traversal**: строгое экранирование путей и защита от перезаписи системных файлов.
-  * 💾 **Атомарная запись**: сохранение результатов через промежуточный буфер исключает порчу файлов при сбоях питания.
-  * 🧠 **Управление VRAM**: очистка видеопамяти (`torch.cuda.empty_cache()` / `torch.mps.empty_cache()`) при смене моделей.
-* **Удобный интерфейс**:
-  * Кнопка **`📁 Change file`** (выбор любого аудиоформата: `.mp3`, `.m4a`, `.wav`, `.ogg`, `.flac`, `.aac` и др.).
-  * Поле **`Change name...`** с автоматической генерацией имени `<имя_файла>_final`.
-  * Кнопка **`▶ Transcribe`** и кнопка экстренной отмены **`⏹ Стоп`**.
-  * Экспорт в два формата: полный текст (`.txt`) и детальные таймкоды фраз (`.json`).
+* **⚡ Native Hardware Acceleration**:
+  * **Windows & Linux**: NVIDIA CUDA with TensorFloat-32 (TF32) tensor core acceleration.
+  * **macOS**: Apple Silicon Metal Performance Shaders (MPS) for M1/M2/M3/M4 processors.
+  * **CPU Fallback**: Automatic, graceful downgrade to CPU inference if an accelerator is missing or runs out of memory.
+* **🔇 Silence Removal & Audio Normalization**:
+  * Integrated FFmpeg pipeline (`silenceremove`) strips silent pauses and converts input into 16 kHz mono before model inference.
+  * Significantly reduces hallucination rates and accelerates total processing time.
+* **🧠 Smart Model Management**:
+  * Real-time local cache inspection (`~/.cache/whisper`).
+  * Live model status tags: `[✓ Cached]` or `[⬇ Download Required]`.
+  * Visual network download progress indicator (reporting MB and percentage) directly in the GUI.
+* **🛡️ Security & Fault Tolerance**:
+  * **Path Traversal Protection**: Strict filename sanitization via `os.path.basename` prevents unauthorized filesystem navigation.
+  * **Atomic File Writes**: Transcripts are written to temporary buffers before atomic file replacement, guaranteeing zero corrupted files upon power loss.
+  * **VRAM Leak Prevention**: Explicit memory release (`torch.cuda.empty_cache()` / `torch.mps.empty_cache()`) during model switches prevents CUDA Out of Memory (OOM) errors.
+* **💻 Clean, Non-Blocking Interface**:
+  * Interactive dark mode GUI with minimize, maximize, and clean exit.
+  * Real-time segment transcription streaming directly into the GUI console.
+  * Single-click actions to open output directories, view generated `.txt` files, or copy transcripts to the clipboard.
 
 ---
 
-## 📂 Структура проекта
+## 📂 Repository Architecture
 
 ```text
-whisper-transcriber-app/
-├── src/                          # Единое кроссплатформенное ядро приложения
-│   └── app.py                    # Главный исходный код GUI (Tkinter + PyTorch + Whisper)
+whisper-transcriber/
+├── src/                          # Universal cross-platform application core
+│   └── app.py                    # Main GUI implementation (Tkinter + PyTorch + Whisper)
 │
-├── windows/                      # Пакет для пользователей Windows
-│   ├── run.bat                   # Лаунчер двойным кликом
-│   ├── build_exe.bat             # Скрипт сборки автономного Transcriber.exe
-│   └── README_WINDOWS.md         # Подробное руководство для Windows
+├── windows/                      # Windows platform bundle
+│   ├── run.bat                   # Double-click launcher
+│   ├── build_exe.bat             # Standalone Transcriber.exe build script
+│   └── README_WINDOWS.md         # Windows configuration guide
 │
-├── linux/                        # Пакет для пользователей Linux
-│   ├── run.sh                    # Bash-скрипт запуска
-│   ├── build_linux.sh            # Скрипт сборки бинарника ELF
-│   ├── transcriber.desktop       # Ярлык для системного меню приложений
-│   └── README_LINUX.md           # Подробное руководство для Ubuntu/Debian/Arch
+├── linux/                        # Linux platform bundle
+│   ├── run.sh                    # Shell launcher script
+│   ├── build_linux.sh            # ELF binary compilation script
+│   ├── transcriber.desktop       # Desktop entry for system application menus
+│   └── README_LINUX.md           # Ubuntu/Debian/Arch configuration guide
 │
-├── macos/                        # Пакет для пользователей macOS (Apple Silicon & Intel)
-│   ├── run_mac.command           # Лаунчер двойным кликом в Finder
-│   ├── build_macos.sh            # Скрипт сборки нативного .app бандла
-│   └── README_MACOS.md           # Подробное руководство для macOS
+├── macos/                        # macOS platform bundle
+│   ├── run_mac.command           # Double-click Finder launcher
+│   ├── build_macos.sh            # Native .app bundle compilation script
+│   └── README_MACOS.md           # Apple Silicon MPS configuration guide
 │
-├── tests/                        # Автоматизированный комплекс тестов
-│   ├── test_cross_platform.py    # Тесты безопасности, FFmpeg, VRAM и распознавания
-│   └── test_all_platforms.py     # Тесты CPU, Apple Silicon MPS и отказоустойчивости
+├── tests/                        # Comprehensive automated test suite
+│   ├── test_cross_platform.py    # Path security, FFmpeg, VRAM & transcription tests
+│   └── test_all_platforms.py     # CPU fallback, POSIX line endings & failure recovery
 │
-├── dist/                         # Каталог скомпилированных исполняемых файлов
+├── dist/                         # Distribution build artifacts
 │   └── Transcriber/Transcriber.exe
 │
-├── app.py                        # Корневая точка входа для быстрого запуска
-├── requirements.txt              # Базовые зависимости
-├── requirements-cuda.txt         # Зависимости для NVIDIA CUDA (Windows / Linux)
-├── requirements-macos.txt        # Зависимости для macOS (Apple Silicon MPS)
-├── .gitattributes                # Настройка переносов строк Git (LF для POSIX)
-├── .gitignore                    # Исключения Git
-└── LICENSE                       # Лицензия MIT
+├── app.py                        # Root universal entry point
+├── requirements.txt              # Standard base dependencies
+├── requirements-cuda.txt         # Dependencies with NVIDIA CUDA wheel index
+├── requirements-macos.txt        # Dependencies tailored for Apple Silicon Metal
+├── .gitattributes                # Enforces POSIX LF line endings for scripts
+├── .gitignore                    # Production Git ignore filters
+└── LICENSE                       # Proprietary copyright notice
 ```
 
 ---
 
-## 🛠️ Установка и запуск из исходников
+## 🚀 Quick Start from Source
 
-### 🪟 Windows
-1. Установите зависимости:
+### 🪟 Windows Setup
+1. **Install Dependencies**:
    ```cmd
    pip install -r requirements-cuda.txt
    ```
-2. Установите FFmpeg (если еще не установлен):
+2. **Install FFmpeg** *(via Windows Package Manager)*:
    ```cmd
    winget install Gyan.FFmpeg
    ```
-3. Запустите приложение через [`windows/run.bat`](windows/run.bat) или:
+3. **Run Application**:
+   Launch via [`windows/run.bat`](windows/run.bat) or execute:
    ```cmd
    python app.py
    ```
-4. Для сборки `.exe`: запустите [`windows/build_exe.bat`](windows/build_exe.bat).
+4. **Compile to `.exe`**:
+   Run [`windows/build_exe.bat`](windows/build_exe.bat).
 
 ---
 
-### 🐧 Linux (Ubuntu, Debian, Fedora, Arch Linux)
-1. Установите FFmpeg и системные библиотеки:
+### 🐧 Linux Setup (Ubuntu / Debian / Arch / Fedora)
+1. **Install System Dependencies & FFmpeg**:
    ```bash
-   # Ubuntu / Debian:
+   # Ubuntu / Debian
    sudo apt update && sudo apt install -y ffmpeg python3-tk python3-pip
 
-   # Arch Linux / Manjaro:
+   # Arch Linux / Manjaro
    sudo pacman -S ffmpeg tk python-pip
    ```
-2. Установите Python-библиотеки:
+2. **Install Python Libraries**:
    ```bash
-   pip3 install -r requirements-cuda.txt  # для карт NVIDIA
-   # или: pip3 install -r requirements.txt  # только для CPU
+   # For NVIDIA GPUs:
+   pip3 install -r requirements-cuda.txt
+
+   # For CPU-only:
+   pip3 install -r requirements.txt
    ```
-3. Запустите приложение:
+3. **Run Application**:
    ```bash
    chmod +x linux/run.sh && ./linux/run.sh
    ```
-4. Для сборки бинарника: `chmod +x linux/build_linux.sh && ./linux/build_linux.sh`.
+4. **Compile Binary**:
+   ```bash
+   chmod +x linux/build_linux.sh && ./linux/build_linux.sh
+   ```
 
 ---
 
-### 🍏 macOS (Apple Silicon M1/M2/M3/M4 & Intel)
-1. Установите FFmpeg через Homebrew:
+### 🍏 macOS Setup (Apple Silicon M1-M4 & Intel)
+1. **Install FFmpeg via Homebrew**:
    ```zsh
    brew install ffmpeg python-tk
    ```
-2. Установите зависимости (с нативной поддержкой Metal Performance Shaders):
+2. **Install Dependencies**:
    ```zsh
    pip3 install -r requirements-macos.txt
    ```
-3. Запустите приложение двойным кликом по файлу **`macos/run_mac.command`** в Finder или через терминал:
+3. **Run Application**:
+   Double-click **`macos/run_mac.command`** in Finder or execute:
    ```zsh
    python3 app.py
    ```
-4. Для сборки `.app` бандла: `chmod +x macos/build_macos.sh && ./macos/build_macos.sh`.
+4. **Compile Native `.app` Bundle**:
+   ```zsh
+   chmod +x macos/build_macos.sh && ./macos/build_macos.sh
+   ```
 
 ---
 
-## 🧪 Автоматическое тестирование (Test Suite)
+## 📊 Supported Models
 
-Проект поставляется с двумя наборами автоматических тестов:
+| Model Key | Parameters | VRAM Required | English / Multilingual | Relative Speed | Recommended Use Case |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`turbo`** *(Default)* | 809 M | ~1.5 GB | Multilingual | **~8x** | **Recommended**: High accuracy with ultra-fast inference |
+| **`large-v3`** | 1550 M | ~3.0 GB | Multilingual | ~1x | Maximum precision for complex terminology and accents |
+| **`medium`** | 769 M | ~1.5 GB | Multilingual | ~2x | Balanced resource usage for mid-tier GPUs |
+| **`small`** | 244 M | ~500 MB | Multilingual | ~4x | Fast processing on low-VRAM GPUs or lightweight setups |
+| **`base`** | 74 M | ~150 MB | Multilingual | ~16x | Lightweight, efficient speech recognition |
+| **`tiny`** | 39 M | ~80 MB | Multilingual | ~32x | Ultra-lightweight CPU-friendly transcription |
+
+---
+
+## 🧪 Automated Testing & Verification
+
+The test suite validates hardware accelerators, memory cleanup, and security guarantees:
+
 ```bash
-# Базовые тесты безопасности и сквозного распознавания
+# Run cross-platform core tests
 python tests/test_cross_platform.py
 
-# Тесты для окружений без CUDA (CPU fallback, симуляция Linux/macOS)
+# Run CPU fallback, POSIX line endings, and error handling tests
 python tests/test_all_platforms.py
 ```
 
-**Все 10 тестов проходят со 100% успехом**:
-* Проверена защита от Path Traversal (`../../etc/passwd`, инъекции запрещенных символов Windows/POSIX).
-* Проверена работа FFmpeg `silenceremove` в моно 16 кГц.
-* Проверена корректность очистки видеопамяти VRAM на NVIDIA RTX и Apple Silicon Metal MPS.
-* Проверена отказоустойчивость при отсутствии FFmpeg и несовместимости ускорения.
+### Coverage Highlights:
+* `test_01_security_path_traversal`: Confirms that malicious input paths (e.g. `../../etc/passwd`) are neutralized.
+* `test_02_ffmpeg_preprocessing`: Validates 16 kHz mono conversion and silence removal.
+* `test_03_hardware_acceleration`: Confirms proper CUDA / MPS device initialization and zero memory leaks upon model unloading.
+* `test_04_transcription_and_atomic_write`: Verifies end-to-end inference and atomic `.txt` and `.json` file generation.
+* `test_05_posix_line_endings`: Verifies all Linux and macOS scripts strictly adhere to POSIX LF line endings.
 
 ---
 
-## 📄 Авторские права и лицензия
+## 📄 License & Intellectual Property
 
-**Copyright (c) 2026 w1sely. All Rights Reserved (Все права защищены).**
+**Copyright (c) 2026 w1sely. All Rights Reserved.**
 
-Исходный код и бинарные файлы защищены авторским правом. Любое копирование, модификация, распространение, сублицензирование или коммерческое использование данного программного обеспечения и его частей строго запрещены без предварительного письменного разрешения автора.
+This software and associated documentation files are proprietary. Unauthorized copying, distribution, modification, public display, or reverse engineering of this source code or binary distribution is strictly prohibited without prior written permission from the author.
