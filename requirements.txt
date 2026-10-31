@@ -1,0 +1,5 @@
+# Базовые зависимости
+openai-whisper>=20231117
+torch>=2.0.0
+torchvision
+torchaudio

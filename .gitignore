@@ -1,0 +1,38 @@
+# Байт-код Python и кэш
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Сборка и временные файлы
+build/
+*.spec
+*.tmp
+*.egg-info/
+
+# Бинарники дистрибутивов (можно исключить или включать в релизы GitHub)
+dist/
+
+# Локальные аудиофайлы и тестовые выходы
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.ogg
+test_output/
+*.log
+
+# Локальный кэш моделей Whisper
+.cache/
+
+# Системные файлы ОС
+.DS_Store
+Thumbs.db
+desktop.ini
+*.lnk
+
+# Окружения venv
+venv/
+env/
+.venv/

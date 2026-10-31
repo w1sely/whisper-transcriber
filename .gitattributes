@@ -1,0 +1,6 @@
+# Автоматическое сохранение LF для POSIX скриптов
+* text=auto eol=lf
+*.bat text eol=crlf
+*.sh text eol=lf
+*.command text eol=lf
+*.desktop text eol=lf

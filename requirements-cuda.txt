@@ -1,0 +1,6 @@
+# Зависимости для Windows и Linux с поддержкой NVIDIA CUDA
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch>=2.4.0
+torchvision
+torchaudio
+openai-whisper>=20231117

@@ -1,0 +1,5 @@
+# Зависимости для macOS (поддержка Apple Silicon Metal MPS и Intel)
+torch>=2.4.0
+torchvision
+torchaudio
+openai-whisper>=20231117
