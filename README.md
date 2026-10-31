@@ -27,11 +27,11 @@ All processing runs entirely on your local machine — your audio and transcript
 
 Pre-built binaries and standalone distribution packages:
 
-| Platform | Package Format | Download Link (GitHub Releases) | Hardware Acceleration | Compatibility |
+| Platform | Package Format | Download / Run Link | Hardware Acceleration | Compatibility |
 | :--- | :--- | :--- | :--- | :--- |
 | **🪟 Windows** | Portable Archive (`.zip` with `Transcriber.exe`) | [**⬇️ Download for Windows (x64)**](https://github.com/w1sely/whisper-transcriber/releases/latest/download/Transcriber-Windows-x64.zip)<br>*(Extract and launch `Transcriber.exe`)* | NVIDIA CUDA (RTX / GTX) + CPU | Windows 10, 11 (64-bit) |
-| **🐧 Linux** | Standalone Binary (`.tar.gz`) / `.desktop` | [**⬇️ Download for Linux (x86_64)**](https://github.com/w1sely/whisper-transcriber/releases/latest/download/Transcriber-Linux-x86_64.tar.gz)<br>*(Or run via `linux/run.sh`)* | NVIDIA CUDA / ROCm / CPU | Ubuntu, Debian, Fedora, Arch Linux |
-| **🍏 macOS** | Native Bundle (`.dmg` / `.app`) | [**⬇️ Download for macOS (.dmg)**](https://github.com/w1sely/whisper-transcriber/releases/latest/download/WhisperTranscriber-macOS.dmg)<br>*(Or launch via `macos/run_mac.command`)* | Apple Silicon (M1/M2/M3/M4 Metal MPS) | macOS 12.0+ (Monterey, Ventura, Sonoma, Sequoia) |
+| **🐧 Linux** | Run Script (`linux/run.sh`) & Build Script | [**🚀 Linux Launcher & Setup Guide**](https://github.com/w1sely/whisper-transcriber/tree/main/linux)<br>*(Run: `chmod +x linux/run.sh && ./linux/run.sh`)* | NVIDIA CUDA / ROCm / CPU | Ubuntu, Debian, Fedora, Arch Linux |
+| **🍏 macOS** | Finder Launcher (`.command`) & Build Script | [**🚀 macOS Launcher & Setup Guide**](https://github.com/w1sely/whisper-transcriber/tree/main/macos)<br>*(Launch: double-click `macos/run_mac.command`)* | Apple Silicon (M1/M2/M3/M4 Metal MPS) | macOS 12.0+ (Monterey, Ventura, Sonoma, Sequoia) |
 
 ---
 
