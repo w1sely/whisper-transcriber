@@ -35,6 +35,78 @@ Pre-built binaries and standalone distribution packages:
 
 ---
 
+## 🎯 How to Get Started (Choose Your OS)
+
+### 🪟 Case 1: Windows (Easiest — Standalone `.exe`)
+
+> **No Python or complex setup required!**
+
+1. **Download the archive**: Click [**⬇️ Download for Windows (x64)**](https://github.com/w1sely/whisper-transcriber/releases/latest/download/Transcriber-Windows-x64.zip).
+2. **Extract**: Unpack `Transcriber-Windows-x64.zip` to any folder on your computer.
+3. **Run**: Double-click `Transcriber.exe` (or `Transcriber.lnk`).
+4. **Done!** The app automatically detects your NVIDIA GPU (CUDA) and is immediately ready to transcribe.
+
+*(Alternative for developers who prefer running from source)*:
+```cmd
+git clone https://github.com/w1sely/whisper-transcriber.git
+cd whisper-transcriber
+pip install -r requirements-cuda.txt
+windows\run.bat
+```
+
+---
+
+### 🐧 Case 2: Linux (Ubuntu, Debian, Fedora, Arch Linux)
+
+1. **Install FFmpeg and Python Tkinter**:
+   ```bash
+   # Ubuntu / Debian / Linux Mint:
+   sudo apt update && sudo apt install -y ffmpeg python3-tk python3-pip
+
+   # Arch Linux / Manjaro:
+   sudo pacman -S ffmpeg tk python-pip
+
+   # Fedora / RHEL:
+   sudo dnf install -y ffmpeg python3-tkinter python3-pip
+   ```
+2. **Clone the repository & install Python packages**:
+   ```bash
+   git clone https://github.com/w1sely/whisper-transcriber.git
+   cd whisper-transcriber
+
+   # For NVIDIA GPUs (CUDA):
+   pip3 install -r requirements-cuda.txt
+
+   # For CPU-only or AMD:
+   pip3 install -r requirements.txt
+   ```
+3. **Launch the application**:
+   ```bash
+   chmod +x linux/run.sh && ./linux/run.sh
+   ```
+   *Tip: To build an offline single-file executable for Linux, run `chmod +x linux/build_linux.sh && ./linux/build_linux.sh`.*
+
+---
+
+### 🍏 Case 3: macOS (Apple Silicon M1-M4 & Intel)
+
+1. **Install FFmpeg via Homebrew**:
+   ```zsh
+   brew install ffmpeg python-tk
+   ```
+2. **Clone the repository & install dependencies**:
+   ```zsh
+   git clone https://github.com/w1sely/whisper-transcriber.git
+   cd whisper-transcriber
+   pip3 install -r requirements-macos.txt
+   ```
+3. **Launch in 1 Click**:
+   Simply **double-click `macos/run_mac.command`** in Finder!
+   * The app will automatically initialize Apple Silicon Metal Performance Shaders (MPS) on M1/M2/M3/M4 chips for fast hardware-accelerated transcription.
+   * *(Optional)* To compile a native macOS `.app` bundle: `chmod +x macos/build_macos.sh && ./macos/build_macos.sh`.
+
+---
+
 ## ✨ Key Features
 
 * **⚡ Native Hardware Acceleration**:
@@ -100,75 +172,6 @@ whisper-transcriber/
 
 ---
 
-## 🚀 Quick Start from Source
-
-### 🪟 Windows Setup
-1. **Install Dependencies**:
-   ```cmd
-   pip install -r requirements-cuda.txt
-   ```
-2. **Install FFmpeg** *(via Windows Package Manager)*:
-   ```cmd
-   winget install Gyan.FFmpeg
-   ```
-3. **Run Application**:
-   Launch via [`windows/run.bat`](windows/run.bat) or execute:
-   ```cmd
-   python app.py
-   ```
-4. **Compile to `.exe`**:
-   Run [`windows/build_exe.bat`](windows/build_exe.bat).
-
----
-
-### 🐧 Linux Setup (Ubuntu / Debian / Arch / Fedora)
-1. **Install System Dependencies & FFmpeg**:
-   ```bash
-   # Ubuntu / Debian
-   sudo apt update && sudo apt install -y ffmpeg python3-tk python3-pip
-
-   # Arch Linux / Manjaro
-   sudo pacman -S ffmpeg tk python-pip
-   ```
-2. **Install Python Libraries**:
-   ```bash
-   # For NVIDIA GPUs:
-   pip3 install -r requirements-cuda.txt
-
-   # For CPU-only:
-   pip3 install -r requirements.txt
-   ```
-3. **Run Application**:
-   ```bash
-   chmod +x linux/run.sh && ./linux/run.sh
-   ```
-4. **Compile Binary**:
-   ```bash
-   chmod +x linux/build_linux.sh && ./linux/build_linux.sh
-   ```
-
----
-
-### 🍏 macOS Setup (Apple Silicon M1-M4 & Intel)
-1. **Install FFmpeg via Homebrew**:
-   ```zsh
-   brew install ffmpeg python-tk
-   ```
-2. **Install Dependencies**:
-   ```zsh
-   pip3 install -r requirements-macos.txt
-   ```
-3. **Run Application**:
-   Double-click **`macos/run_mac.command`** in Finder or execute:
-   ```zsh
-   python3 app.py
-   ```
-4. **Compile Native `.app` Bundle**:
-   ```zsh
-   chmod +x macos/build_macos.sh && ./macos/build_macos.sh
-   ```
-
----
 
 ## 📊 Supported Models
 
