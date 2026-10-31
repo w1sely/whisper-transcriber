@@ -5,12 +5,12 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB?logo=python&logoColor=white" alt="Python Versions">
-  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-success" alt="Platforms">
-  <img src="https://img.shields.io/badge/Hardware%20Accel-NVIDIA%20CUDA%20%7C%20Apple%20Silicon%20MPS-orange" alt="Hardware Acceleration">
-  <img src="https://img.shields.io/badge/Engine-OpenAI%20Whisper-412991?logo=openai&logoColor=white" alt="Whisper">
-  <img src="https://img.shields.io/badge/Audio%20Processing-FFmpeg-007808?logo=ffmpeg&logoColor=white" alt="FFmpeg">
-  <img src="https://img.shields.io/badge/License-All%20Rights%20Reserved-red" alt="License">
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB?logo=python&logoColor=white" alt="Python Versions"></a>
+  <a href="https://github.com/w1sely/whisper-transcriber/releases"><img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-success" alt="Platforms"></a>
+  <a href="https://developer.nvidia.com/cuda"><img src="https://img.shields.io/badge/Hardware%20Accel-NVIDIA%20CUDA%20%7C%20Apple%20Silicon%20MPS-orange" alt="Hardware Acceleration"></a>
+  <a href="https://github.com/openai/whisper"><img src="https://img.shields.io/badge/Engine-OpenAI%20Whisper-412991?logo=openai&logoColor=white" alt="Whisper"></a>
+  <a href="https://ffmpeg.org/"><img src="https://img.shields.io/badge/Audio%20Processing-FFmpeg-007808?logo=ffmpeg&logoColor=white" alt="FFmpeg"></a>
+  <a href="https://github.com/w1sely/whisper-transcriber/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-All%20Rights%20Reserved-red" alt="License"></a>
 </p>
 
 ---
