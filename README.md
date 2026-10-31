@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/badge/Platforms-Windows%20%7C%20Linux%20%7C%20macOS-success" alt="Platforms">
   <img src="https://img.shields.io/badge/Acceleration-NVIDIA%20CUDA%20%7C%20Apple%20Silicon%20MPS-orange" alt="Hardware Acceleration">
   <img src="https://img.shields.io/badge/Engine-OpenAI%20Whisper-brightgreen" alt="Whisper">
-  <img src="https://img.shields.io/badge/License-MIT-blue" alt="License">
+  <img src="https://img.shields.io/badge/License-All%20Rights%20Reserved-red" alt="License">
 </p>
 
 **Whisper Transcriber** — современное, быстрое и безопасное кроссплатформенное приложение для транскрибации аудио в текст. Работает полностью локально (офлайн) на вашем компьютере, поддерживает аппаратное ускорение на **NVIDIA RTX (CUDA)** и **Apple Silicon M1-M4 (Metal MPS)**, автоматически удаляет паузы и тишину через **FFmpeg**, а также выводит распознанный текст в реальном времени.
@@ -168,6 +168,8 @@ python tests/test_all_platforms.py
 
 ---
 
-## 📄 Лицензия
+## 📄 Авторские права и лицензия
 
-Проект распространяется под открытой лицензией **MIT License**. Подробнее см. в файле [LICENSE](LICENSE).
+**Copyright (c) 2026 w1sely. All Rights Reserved (Все права защищены).**
+
+Исходный код и бинарные файлы защищены авторским правом. Любое копирование, модификация, распространение, сублицензирование или коммерческое использование данного программного обеспечения и его частей строго запрещены без предварительного письменного разрешения автора.
