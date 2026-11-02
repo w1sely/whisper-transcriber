@@ -354,7 +354,7 @@ class TranscriberApp:
 
         # Row 1: File selection
         file_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
-        file_row.pack(fill=tk.X, pady=(0, 8))
+        file_row.pack(fill=tk.X, pady=(0, 6))
 
         self.btn_change_file = tk.Button(
             file_row,
@@ -382,7 +382,43 @@ class TranscriberApp:
         )
         self.lbl_selected_file.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        # Row 2: URL input (yt-dlp integration)
+        # Row 2: Output file name
+        name_label_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
+        name_label_row.pack(fill=tk.X, pady=(2, 2))
+
+        tk.Label(
+            name_label_row,
+            text="Change name (output file name without extension):",
+            font=("Segoe UI", 9, "bold"),
+            bg=self.colors["card_bg"],
+            fg=self.colors["text"]
+        ).pack(side=tk.LEFT)
+
+        self.lbl_save_hint = tk.Label(
+            name_label_row,
+            text="Generates: <name>.txt and <name>.json",
+            font=("Segoe UI", 8),
+            bg=self.colors["card_bg"],
+            fg=self.colors["text_muted"]
+        )
+        self.lbl_save_hint.pack(side=tk.RIGHT)
+
+        name_entry_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
+        name_entry_row.pack(fill=tk.X, pady=(0, 8))
+
+        self.entry_name = tk.Entry(
+            name_entry_row,
+            font=("Segoe UI", 10, "bold"),
+            bg=self.colors["input_bg"],
+            fg=self.colors["accent"],
+            insertbackground=self.colors["accent"],
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=self.colors["card_border"]
+        )
+        self.entry_name.pack(fill=tk.X, ipady=5)
+
+        # Row 3: URL input (yt-dlp integration)
         url_label_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
         url_label_row.pack(fill=tk.X, pady=(2, 2))
 
@@ -433,42 +469,6 @@ class TranscriberApp:
             command=self.on_fetch_url
         )
         self.btn_fetch.pack(side=tk.RIGHT)
-
-        # Row 3: Output file name
-        name_label_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
-        name_label_row.pack(fill=tk.X, pady=(2, 2))
-
-        tk.Label(
-            name_label_row,
-            text="Change name (output file name without extension):",
-            font=("Segoe UI", 9, "bold"),
-            bg=self.colors["card_bg"],
-            fg=self.colors["text"]
-        ).pack(side=tk.LEFT)
-
-        self.lbl_save_hint = tk.Label(
-            name_label_row,
-            text="Generates: <name>.txt and <name>.json",
-            font=("Segoe UI", 8),
-            bg=self.colors["card_bg"],
-            fg=self.colors["text_muted"]
-        )
-        self.lbl_save_hint.pack(side=tk.RIGHT)
-
-        name_entry_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
-        name_entry_row.pack(fill=tk.X, pady=(0, 8))
-
-        self.entry_name = tk.Entry(
-            name_entry_row,
-            font=("Segoe UI", 10, "bold"),
-            bg=self.colors["input_bg"],
-            fg=self.colors["accent"],
-            insertbackground=self.colors["accent"],
-            relief="flat",
-            highlightthickness=1,
-            highlightbackground=self.colors["card_border"]
-        )
-        self.entry_name.pack(fill=tk.X, ipady=5)
 
         # Row 4: Options
         opts_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
@@ -791,6 +791,11 @@ class TranscriberApp:
             default_base_name = f"{name_without_ext}_final"
             self.entry_name.delete(0, tk.END)
             self.entry_name.insert(0, default_base_name)
+
+            # Clear URL input when a local file is picked to avoid confusion
+            if hasattr(self, "entry_url"):
+                self.entry_url.delete(0, tk.END)
+            self.last_downloaded_url = None
 
             self.lbl_status.config(text=f"File ready: {filename}. Click 'Transcribe'.", fg=self.colors["accent"])
             self.log_system(f"Selected file: {chosen}")
