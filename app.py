@@ -8,6 +8,7 @@ Features: Local audio files + direct URL downloads (VK Video, YouTube, Rutube, S
 """
 
 import os
+import re
 import sys
 import time
 import json
@@ -97,6 +98,54 @@ def format_download_error(err):
         hint = ""
 
     return f"{raw}{hint}"
+
+
+def sanitize_filename_input(text: str) -> str:
+    """
+    Sanitizes user input or clipboard content for valid cross-platform file names.
+    Removes invalid characters (<>:"/\\|?*), control characters, trailing dots/spaces,
+    and protects against Windows reserved device names (CON, PRN, AUX, etc.).
+    """
+    if not text:
+        return ""
+    # Strip non-printable ASCII control characters and DEL
+    clean = re.sub(r'[\x00-\x1f\x7f]', '', text)
+    # Replace forbidden filename characters across Windows/Linux/macOS
+    for ch in '<>:"/\\|?*':
+        clean = clean.replace(ch, '_')
+    # Collapse multiple consecutive underscores
+    clean = re.sub(r'_+', '_', clean)
+    # Strip forbidden leading and trailing spaces, dots, and dangling underscores
+    clean = clean.strip('. _')
+    # Protect against Windows reserved device names
+    reserved = {
+        'CON', 'PRN', 'AUX', 'NUL',
+        'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
+        'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'
+    }
+    if clean.upper() in reserved:
+        clean = f"{clean}_file"
+    # Cap length to 200 characters to prevent path overflow
+    return clean[:200]
+
+
+def sanitize_url_input(text: str) -> str:
+    """
+    Sanitizes user input or clipboard content for media URLs.
+    Strips accidental quotes, angle brackets, line breaks, and auto-detects
+    missing http/https protocols for domain-like inputs.
+    """
+    if not text:
+        return ""
+    # Strip accidental wrapping quotes, angle brackets, whitespace, and newlines
+    clean = text.strip(' \t\r\n"\'`<>')
+    # Remove any internal newlines or tabs (often introduced when copying across lines)
+    clean = re.sub(r'[\r\n\t]+', '', clean)
+    # Auto-prepend https:// if domain-like input without scheme is provided
+    if clean and not clean.startswith(('http://', 'https://')):
+        if re.match(r'^(?:www\.)?[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+', clean):
+            clean = 'https://' + clean
+    return clean
 
 
 class TextRedirector:
@@ -292,6 +341,214 @@ class TranscriberApp:
                 self.combo_model.set(val)
                 break
 
+    def setup_entry_clipboard(self, widget, filter_func=None, on_paste_status=None):
+        """
+        Enables cross-layout clipboard operations (Copy, Cut, Paste, Select All)
+        for English and Russian (Cyrillic) keyboard layouts, plus right-click
+        context menu with input sanitization.
+        """
+        def do_paste(event=None):
+            try:
+                raw_text = widget.clipboard_get()
+            except tk.TclError:
+                return "break"
+            if not raw_text:
+                return "break"
+
+            cleaned = filter_func(raw_text) if filter_func else raw_text
+            try:
+                sel_start = widget.index(tk.SEL_FIRST)
+                sel_end = widget.index(tk.SEL_LAST)
+                widget.delete(sel_start, sel_end)
+                insert_pos = sel_start
+            except tk.TclError:
+                insert_pos = widget.index(tk.INSERT)
+
+            widget.insert(insert_pos, cleaned)
+            widget.icursor(insert_pos + len(cleaned))
+
+            if on_paste_status and cleaned != raw_text:
+                on_paste_status(f"Pasted and sanitized: {cleaned}")
+            return "break"
+
+        def do_copy(event=None):
+            try:
+                text = widget.selection_get()
+                widget.clipboard_clear()
+                widget.clipboard_append(text)
+            except tk.TclError:
+                pass
+            return "break"
+
+        def do_cut(event=None):
+            try:
+                text = widget.selection_get()
+                widget.clipboard_clear()
+                widget.clipboard_append(text)
+                widget.delete(tk.SEL_FIRST, tk.SEL_LAST)
+            except tk.TclError:
+                pass
+            return "break"
+
+        def do_select_all(event=None):
+            widget.select_range(0, tk.END)
+            widget.icursor(tk.END)
+            return "break"
+
+        def do_clear(event=None):
+            widget.delete(0, tk.END)
+            return "break"
+
+        def on_key_press(event):
+            is_ctrl = bool(event.state & 4) or bool(event.state & 8) or bool(event.state & 0x0004)
+            char = getattr(event, "char", "")
+            kc = getattr(event, "keycode", 0)
+            ks = getattr(event, "keysym", "")
+
+            # Paste: char '\x16' (ASCII 22 = Ctrl+V) or Ctrl+(VK 86 / v / Cyrillic_em)
+            if char == "\x16" or (is_ctrl and (kc == 86 or ks in ("v", "V", "Cyrillic_em", "Cyrillic_EM"))):
+                return do_paste(event)
+
+            # Copy: char '\x03' (ASCII 3 = Ctrl+C) or Ctrl+(VK 67 / c / Cyrillic_es)
+            if char == "\x03" or (is_ctrl and (kc == 67 or ks in ("c", "C", "Cyrillic_es", "Cyrillic_ES"))):
+                return do_copy(event)
+
+            # Cut: char '\x18' (ASCII 24 = Ctrl+X) or Ctrl+(VK 88 / x / Cyrillic_che)
+            if char == "\x18" or (is_ctrl and (kc == 88 or ks in ("x", "X", "Cyrillic_che", "Cyrillic_CHE"))):
+                return do_cut(event)
+
+            # Select All: char '\x01' (ASCII 1 = Ctrl+A) or Ctrl+(VK 65 / a / Cyrillic_ef)
+            if char == "\x01" or (is_ctrl and (kc == 65 or ks in ("a", "A", "Cyrillic_ef", "Cyrillic_EF"))):
+                return do_select_all(event)
+
+        widget.bind("<<Paste>>", do_paste)
+        widget.bind("<<Copy>>", do_copy)
+        widget.bind("<<Cut>>", do_cut)
+        widget.bind("<KeyPress>", on_key_press)
+
+        # Right-click context menu
+        ctx_menu = tk.Menu(
+            widget,
+            tearoff=0,
+            bg=self.colors.get("card_bg", "#1e1e2e"),
+            fg=self.colors.get("text", "#cdd6f4"),
+            activebackground=self.colors.get("accent", "#89b4fa"),
+            activeforeground="#11111b",
+            font=("Segoe UI", 9),
+            relief="solid",
+            bd=1
+        )
+        ctx_menu.add_command(label="Cut        (Ctrl+X)", command=do_cut)
+        ctx_menu.add_command(label="Copy       (Ctrl+C)", command=do_copy)
+        ctx_menu.add_command(label="Paste      (Ctrl+V)", command=do_paste)
+        ctx_menu.add_separator()
+        ctx_menu.add_command(label="Select All (Ctrl+A)", command=do_select_all)
+        ctx_menu.add_command(label="Clear", command=do_clear)
+
+        def show_ctx_menu(event):
+            has_sel = False
+            try:
+                if widget.selection_get():
+                    has_sel = True
+            except tk.TclError:
+                has_sel = False
+
+            ctx_menu.entryconfig(0, state=tk.NORMAL if has_sel else tk.DISABLED)
+            ctx_menu.entryconfig(1, state=tk.NORMAL if has_sel else tk.DISABLED)
+
+            cb_has_text = False
+            try:
+                cb_has_text = bool(widget.clipboard_get())
+            except tk.TclError:
+                cb_has_text = False
+            ctx_menu.entryconfig(2, state=tk.NORMAL if cb_has_text else tk.DISABLED)
+
+            ctx_menu.tk_popup(event.x_root, event.y_root)
+
+        widget.bind("<Button-3>", show_ctx_menu)
+        widget.bind("<Button-2>", show_ctx_menu)
+        return do_paste, do_copy, do_cut, do_select_all
+
+    def setup_text_clipboard(self, widget):
+        """Enables Copy and Select All on Text widgets across keyboard layouts and right-click."""
+        def do_copy(event=None):
+            try:
+                text = widget.selection_get()
+                widget.clipboard_clear()
+                widget.clipboard_append(text)
+            except tk.TclError:
+                pass
+            return "break"
+
+        def do_select_all(event=None):
+            widget.tag_add(tk.SEL, "1.0", tk.END)
+            widget.mark_set(tk.INSERT, tk.END)
+            widget.see(tk.INSERT)
+            return "break"
+
+        def on_key_press(event):
+            is_ctrl = bool(event.state & 4) or bool(event.state & 8) or bool(event.state & 0x0004)
+            char = getattr(event, "char", "")
+            kc = getattr(event, "keycode", 0)
+            ks = getattr(event, "keysym", "")
+
+            if char == "\x03" or (is_ctrl and (kc == 67 or ks in ("c", "C", "Cyrillic_es", "Cyrillic_ES"))):
+                return do_copy(event)
+            if char == "\x01" or (is_ctrl and (kc == 65 or ks in ("a", "A", "Cyrillic_ef", "Cyrillic_EF"))):
+                return do_select_all(event)
+
+        widget.bind("<<Copy>>", do_copy)
+        widget.bind("<KeyPress>", on_key_press)
+
+        ctx_menu = tk.Menu(
+            widget,
+            tearoff=0,
+            bg=self.colors.get("card_bg", "#1e1e2e"),
+            fg=self.colors.get("text", "#cdd6f4"),
+            activebackground=self.colors.get("accent", "#89b4fa"),
+            activeforeground="#11111b",
+            font=("Segoe UI", 9),
+            relief="solid",
+            bd=1
+        )
+        ctx_menu.add_command(label="Copy       (Ctrl+C)", command=do_copy)
+        ctx_menu.add_command(label="Select All (Ctrl+A)", command=do_select_all)
+
+        def show_ctx_menu(event):
+            has_sel = False
+            try:
+                if widget.selection_get():
+                    has_sel = True
+            except tk.TclError:
+                has_sel = False
+            ctx_menu.entryconfig(0, state=tk.NORMAL if has_sel else tk.DISABLED)
+            ctx_menu.tk_popup(event.x_root, event.y_root)
+
+        widget.bind("<Button-3>", show_ctx_menu)
+        widget.bind("<Button-2>", show_ctx_menu)
+
+    def on_name_focus_out(self, event=None):
+        """Sanitizes file name on focus loss or before processing."""
+        raw = self.entry_name.get()
+        if raw:
+            cleaned = sanitize_filename_input(raw)
+            if cleaned != raw:
+                self.entry_name.delete(0, tk.END)
+                self.entry_name.insert(0, cleaned)
+                self.lbl_status.config(
+                    text=f"Sanitized filename characters to: {cleaned}",
+                    fg=self.colors["accent"]
+                )
+
+    def on_url_focus_out(self, event=None):
+        """Sanitizes URL input on focus loss or before processing."""
+        raw = self.entry_url.get()
+        if raw:
+            cleaned = sanitize_url_input(raw)
+            if cleaned != raw:
+                self.entry_url.delete(0, tk.END)
+                self.entry_url.insert(0, cleaned)
+
     def build_ui(self):
         main_frame = tk.Frame(self.root, bg=self.colors["bg"], padx=18, pady=12)
         main_frame.pack(fill=tk.BOTH, expand=True)
@@ -417,6 +674,12 @@ class TranscriberApp:
             highlightbackground=self.colors["card_border"]
         )
         self.entry_name.pack(fill=tk.X, ipady=5)
+        self.setup_entry_clipboard(
+            self.entry_name,
+            filter_func=sanitize_filename_input,
+            on_paste_status=lambda msg: self.lbl_status.config(text=msg, fg=self.colors["accent"])
+        )
+        self.entry_name.bind("<FocusOut>", self.on_name_focus_out)
 
         # Row 3: URL input (yt-dlp integration)
         url_label_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
@@ -453,6 +716,12 @@ class TranscriberApp:
         )
         self.entry_url.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=5, padx=(0, 8))
         self.entry_url.bind("<Return>", lambda event: self.on_fetch_url())
+        self.setup_entry_clipboard(
+            self.entry_url,
+            filter_func=sanitize_url_input,
+            on_paste_status=lambda msg: self.lbl_status.config(text=msg, fg=self.colors["accent"])
+        )
+        self.entry_url.bind("<FocusOut>", self.on_url_focus_out)
 
         self.btn_fetch = tk.Button(
             url_input_row,
@@ -656,6 +925,7 @@ class TranscriberApp:
 
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.txt_log.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.setup_text_clipboard(self.txt_log)
 
         self.txt_log.tag_config("system", foreground=self.colors["accent"])
         self.txt_log.tag_config("success", foreground=self.colors["success"])
@@ -805,10 +1075,15 @@ class TranscriberApp:
         if self.is_processing:
             return
 
-        url = self.entry_url.get().strip()
-        if not url:
+        raw_url = self.entry_url.get().strip()
+        if not raw_url:
             messagebox.showwarning("Enter URL", "Please enter or paste a media URL (VK Video, YouTube, Rutube, etc.) first.")
             return
+
+        url = sanitize_url_input(raw_url)
+        if url != raw_url:
+            self.entry_url.delete(0, tk.END)
+            self.entry_url.insert(0, url)
 
         if not url.startswith(("http://", "https://")):
             messagebox.showwarning("Invalid URL", "The URL must start with http:// or https://")
@@ -830,17 +1105,16 @@ class TranscriberApp:
     def _fetch_url_worker(self, url):
         """Worker thread to download audio from URL and populate GUI fields."""
         try:
-            mp3_file, title = self.download_audio_from_url(url)
+            custom_name = self.entry_name.get().strip()
+            custom_clean = sanitize_filename_input(custom_name) if custom_name else None
+            mp3_file, title = self.download_audio_from_url(url, custom_name=custom_clean)
             if mp3_file and os.path.exists(mp3_file):
                 self.selected_file_path = mp3_file
                 self.output_directory = os.path.dirname(mp3_file)
                 self.last_downloaded_url = url
                 filename = os.path.basename(mp3_file)
 
-                clean_title = title
-                for ch in '<>:"/\\|?*':
-                    clean_title = clean_title.replace(ch, "_")
-                clean_title = clean_title.strip(". ")
+                clean_title = sanitize_filename_input(title)
                 default_base_name = f"{clean_title}_final"
 
                 self.root.after(0, lambda: [
@@ -1043,7 +1317,12 @@ class TranscriberApp:
             messagebox.showerror("Error", f"Missing torch / whisper dependencies:\n{IMPORT_ERROR_MSG}")
             return
 
-        url = self.entry_url.get().strip() if hasattr(self, "entry_url") else ""
+        raw_url = self.entry_url.get().strip() if hasattr(self, "entry_url") else ""
+        url = sanitize_url_input(raw_url) if raw_url else ""
+        if url != raw_url and hasattr(self, "entry_url"):
+            self.entry_url.delete(0, tk.END)
+            self.entry_url.insert(0, url)
+
         has_new_url = bool(url and url.startswith(("http://", "https://")) and url != self.last_downloaded_url)
 
         source_url = None
@@ -1075,15 +1354,12 @@ class TranscriberApp:
         raw_name = self.entry_name.get().strip()
         base_name = None
         if raw_name:
-            clean = raw_name
-            for char in '<>:"/\\|?*':
-                clean = clean.replace(char, "_")
-            base_name = clean.strip(". ")
+            base_name = sanitize_filename_input(raw_name)
 
         if not base_name and self.selected_file_path:
             filename = os.path.basename(self.selected_file_path)
             name_without_ext, _ = os.path.splitext(filename)
-            base_name = f"{name_without_ext}_final"
+            base_name = sanitize_filename_input(f"{name_without_ext}_final")
 
         if base_name:
             self.entry_name.delete(0, tk.END)
@@ -1204,10 +1480,7 @@ class TranscriberApp:
                 self.last_downloaded_url = source_url
 
                 if not base_name or base_name == "transcription_final":
-                    clean_title = title
-                    for ch in '<>:"/\\|?*':
-                        clean_title = clean_title.replace(ch, "_")
-                    clean_title = clean_title.strip(". ")
+                    clean_title = sanitize_filename_input(title)
                     base_name = f"{clean_title}_final"
                     self.root.after(0, lambda n=base_name: [
                         self.entry_name.delete(0, tk.END),
