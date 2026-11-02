@@ -11,7 +11,7 @@ echo " Building Whisper Transcriber for Linux (ELF)"
 echo "===================================================="
 
 pip3 install pyinstaller
-pyinstaller --noconfirm --onedir --windowed --name "transcriber-linux" --collect-all whisper src/app.py
+pyinstaller --noconfirm --onedir --windowed --name "transcriber-linux" --collect-all whisper --collect-all yt_dlp src/app.py
 
 if [ -f "dist/transcriber-linux/transcriber-linux" ]; then
     echo ""

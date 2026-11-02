@@ -3,3 +3,4 @@ torch>=2.4.0
 torchvision
 torchaudio
 openai-whisper>=20231117
+yt-dlp>=2024.0.0

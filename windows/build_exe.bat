@@ -6,7 +6,7 @@ echo  Building Whisper Transcriber for Windows (.exe)
 echo ====================================================
 
 pip install pyinstaller
-pyinstaller --noconfirm --onedir --windowed --name "Transcriber" --collect-all whisper src\app.py
+pyinstaller --noconfirm --onedir --windowed --name "Transcriber" --collect-all whisper --collect-all yt_dlp src\app.py
 
 if exist "dist\Transcriber\Transcriber.exe" (
     echo.

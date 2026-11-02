@@ -10,6 +10,7 @@
   <a href="https://developer.nvidia.com/cuda"><img src="https://img.shields.io/badge/Hardware%20Accel-NVIDIA%20CUDA%20%7C%20Apple%20Silicon%20MPS-orange" alt="Hardware Acceleration"></a>
   <a href="https://github.com/openai/whisper"><img src="https://img.shields.io/badge/Engine-OpenAI%20Whisper-412991?logo=openai&logoColor=white" alt="Whisper"></a>
   <a href="https://ffmpeg.org/"><img src="https://img.shields.io/badge/Audio%20Processing-FFmpeg-007808?logo=ffmpeg&logoColor=white" alt="FFmpeg"></a>
+  <a href="https://github.com/yt-dlp/yt-dlp"><img src="https://img.shields.io/badge/URL%20Downloader-yt--dlp-FF0000?logo=youtube&logoColor=white" alt="yt-dlp"></a>
   <a href="https://github.com/w1sely/whisper-transcriber/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-All%20Rights%20Reserved-red" alt="License"></a>
 </p>
 
@@ -17,9 +18,9 @@
 
 ## 📖 Overview
 
-**Whisper Transcriber** is a secure, standalone desktop application engineered for fast, offline speech-to-text transcription. It pairs **OpenAI Whisper** with **FFmpeg** audio preprocessing, offering full hardware acceleration across **NVIDIA GPUs (CUDA with TF32)**, **Apple Silicon chips (Metal MPS)**, and a resilient **CPU fallback**.
+**Whisper Transcriber** is a secure, standalone desktop application engineered for fast, offline speech-to-text transcription. It pairs **OpenAI Whisper** with **FFmpeg** audio preprocessing and **yt-dlp** media downloading, offering full hardware acceleration across **NVIDIA GPUs (CUDA with TF32)**, **Apple Silicon chips (Metal MPS)**, and a resilient **CPU fallback**.
 
-All processing runs entirely on your local machine — your audio and transcripts never leave your hardware.
+Transcribe local audio files (`.mp3`, `.wav`, `.m4a`, etc.) or paste media links directly from **VK Video, YouTube, Rutube, Vimeo, SoundCloud**, and 1700+ websites. All Whisper inference runs entirely on your local machine.
 
 ---
 
@@ -113,6 +114,10 @@ windows\run.bat
   * **Windows & Linux**: NVIDIA CUDA with TensorFloat-32 (TF32) tensor core acceleration.
   * **macOS**: Apple Silicon Metal Performance Shaders (MPS) for M1/M2/M3/M4 processors.
   * **CPU Fallback**: Automatic, graceful downgrade to CPU inference if an accelerator is missing or runs out of memory.
+* **🌐 Direct URL Media Downloading (yt-dlp)**:
+  * Seamless audio extraction from web video/audio links (VK Video, YouTube, Rutube, Vimeo, SoundCloud, and 1700+ websites).
+  * Automatically converts downloaded streams to 192 kbps MP3 via FFmpeg with real-time download speed, percentage, and ETA tracking.
+  * Automated title sanitization and seamless 1-click download & transcribe workflow.
 * **🔇 Silence Removal & Audio Normalization**:
   * Integrated FFmpeg pipeline (`silenceremove`) strips silent pauses and converts input into 16 kHz mono before model inference.
   * Significantly reduces hallucination rates and accelerates total processing time.
@@ -156,7 +161,8 @@ whisper-transcriber/
 │
 ├── tests/                        # Comprehensive automated test suite
 │   ├── test_cross_platform.py    # Path security, FFmpeg, VRAM & transcription tests
-│   └── test_all_platforms.py     # CPU fallback, POSIX line endings & failure recovery
+│   ├── test_all_platforms.py     # CPU fallback, POSIX line endings & failure recovery
+│   └── test_url_downloader.py    # yt-dlp URL downloading, sanitization & network tests
 │
 ├── dist/                         # Distribution build artifacts
 │   └── Transcriber/Transcriber.exe
@@ -196,6 +202,9 @@ python tests/test_cross_platform.py
 
 # Run CPU fallback, POSIX line endings, and error handling tests
 python tests/test_all_platforms.py
+
+# Run URL downloader, yt-dlp integration, and exception tests
+python tests/test_url_downloader.py
 ```
 
 ### Coverage Highlights:
@@ -204,6 +213,7 @@ python tests/test_all_platforms.py
 * `test_03_hardware_acceleration`: Confirms proper CUDA / MPS device initialization and zero memory leaks upon model unloading.
 * `test_04_transcription_and_atomic_write`: Verifies end-to-end inference and atomic `.txt` and `.json` file generation.
 * `test_05_posix_line_endings`: Verifies all Linux and macOS scripts strictly adhere to POSIX LF line endings.
+* `test_url_downloader`: Validates yt-dlp URL validation, playlist safety (noplaylist), web title sanitization, and graceful failure on unreachable links.
 
 ---
 

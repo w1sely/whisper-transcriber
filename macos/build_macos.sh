@@ -11,7 +11,7 @@ echo " Building Whisper Transcriber for macOS (.app Bundle)"
 echo "===================================================="
 
 pip3 install pyinstaller
-pyinstaller --noconfirm --onedir --windowed --name "WhisperTranscriber" --collect-all whisper src/app.py
+pyinstaller --noconfirm --onedir --windowed --name "WhisperTranscriber" --collect-all whisper --collect-all yt_dlp src/app.py
 
 if [ -d "dist/WhisperTranscriber.app" ]; then
     echo ""

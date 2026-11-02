@@ -4,6 +4,7 @@
 """
 Whisper Transcriber - Cross-Platform GUI Audio Transcription
 Supports: Windows (CUDA/CPU), Linux (CUDA/ROCm/CPU), macOS (Apple Silicon Metal/MPS/CPU).
+Features: Local audio files + direct URL downloads (VK Video, YouTube, Rutube, SoundCloud, etc.) via yt-dlp.
 """
 
 import os
@@ -25,6 +26,18 @@ try:
 except ImportError as e:
     DEPENDENCIES_AVAILABLE = False
     IMPORT_ERROR_MSG = str(e)
+
+# Attempt to import yt-dlp
+try:
+    import yt_dlp
+    YTDLP_AVAILABLE = True
+except ImportError:
+    YTDLP_AVAILABLE = False
+
+
+class DownloadCancelledError(Exception):
+    """Raised when a download is cancelled by user request."""
+    pass
 
 
 # Whisper model descriptions and sizes
@@ -81,8 +94,8 @@ class TranscriberApp:
         
         # --- SYSTEM WINDOW (OS WINDOW) ---
         self.root.title("Whisper Transcriber (Cross-Platform)")
-        self.root.geometry("760x700")
-        self.root.minsize(680, 580)
+        self.root.geometry("780x740")
+        self.root.minsize(700, 600)
         
         # Intercept window close button (X)
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -95,6 +108,16 @@ class TranscriberApp:
         self.loaded_model = None
         self.loaded_model_name = None
         self.ffmpeg_proc = None
+
+        # Base and downloads directories
+        self.app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.downloads_dir = os.path.join(self.app_dir, "downloads")
+        os.makedirs(self.downloads_dir, exist_ok=True)
+
+        self.selected_file_path = None
+        self.output_directory = None
+        self.last_saved_txt = None
+        self.last_downloaded_url = None
 
         # Whisper cache directory (default ~/.cache/whisper across all OS)
         self.whisper_cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "whisper")
@@ -162,12 +185,13 @@ class TranscriberApp:
         # Start log queue processing loop
         self.root.after(100, self.process_log_queue)
         os_name = "macOS" if sys.platform == "darwin" else ("Windows" if sys.platform == "win32" else "Linux")
-        self.log_system(f"Platform: {os_name} | Hardware Acceleration: {self.device_display}")
+        ytdlp_status = "Available" if YTDLP_AVAILABLE else "Not installed"
+        self.log_system(f"Platform: {os_name} | Hardware Accel: {self.device_display} | yt-dlp: {ytdlp_status}")
         self.check_ffmpeg()
 
     def center_window(self):
         self.root.update_idletasks()
-        w, h = 760, 700
+        w, h = 780, 740
         x = (self.root.winfo_screenwidth() // 2) - (w // 2)
         y = (self.root.winfo_screenheight() // 2) - (h // 2)
         self.root.geometry(f"{w}x{h}+{x}+{y}")
@@ -244,7 +268,7 @@ class TranscriberApp:
                 break
 
     def build_ui(self):
-        main_frame = tk.Frame(self.root, bg=self.colors["bg"], padx=18, pady=14)
+        main_frame = tk.Frame(self.root, bg=self.colors["bg"], padx=18, pady=12)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         # 1. Header: Title + Help + Hardware indicator
@@ -296,36 +320,36 @@ class TranscriberApp:
             main_frame,
             bg=self.colors["card_bg"],
             padx=16,
-            pady=14,
+            pady=12,
             relief="flat",
             highlightthickness=1,
             highlightbackground=self.colors["card_border"]
         )
         ctrl_card.pack(fill=tk.X, pady=(0, 10))
 
-        # File selection
+        # Row 1: File selection
         file_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
-        file_row.pack(fill=tk.X, pady=(0, 10))
+        file_row.pack(fill=tk.X, pady=(0, 8))
 
         self.btn_change_file = tk.Button(
             file_row,
             text="📁 Change file",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
             bg=self.colors["btn_file"],
             fg="#ffffff",
             activebackground=self.colors["btn_file_hover"],
             activeforeground="#ffffff",
             relief="flat",
-            padx=16,
-            pady=6,
+            padx=14,
+            pady=5,
             cursor="hand2",
             command=self.on_change_file
         )
-        self.btn_change_file.pack(side=tk.LEFT, padx=(0, 12))
+        self.btn_change_file.pack(side=tk.LEFT, padx=(0, 10))
 
         self.lbl_selected_file = tk.Label(
             file_row,
-            text="No file selected. Click 'Change file'...",
+            text="No file selected. Select local audio or enter URL below...",
             font=("Segoe UI", 9, "italic"),
             bg=self.colors["card_bg"],
             fg=self.colors["text_muted"],
@@ -333,7 +357,59 @@ class TranscriberApp:
         )
         self.lbl_selected_file.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        # Name field
+        # Row 2: URL input (yt-dlp integration)
+        url_label_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
+        url_label_row.pack(fill=tk.X, pady=(2, 2))
+
+        tk.Label(
+            url_label_row,
+            text="🔗 Or Paste Media URL (VK Video, YouTube, Rutube, SoundCloud, etc.):",
+            font=("Segoe UI", 9, "bold"),
+            bg=self.colors["card_bg"],
+            fg=self.colors["text"]
+        ).pack(side=tk.LEFT)
+
+        tk.Label(
+            url_label_row,
+            text="💡 Extracts MP3 automatically via yt-dlp",
+            font=("Segoe UI", 8),
+            bg=self.colors["card_bg"],
+            fg=self.colors["text_muted"]
+        ).pack(side=tk.RIGHT)
+
+        url_input_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
+        url_input_row.pack(fill=tk.X, pady=(0, 8))
+
+        self.entry_url = tk.Entry(
+            url_input_row,
+            font=("Segoe UI", 10),
+            bg=self.colors["input_bg"],
+            fg=self.colors["accent"],
+            insertbackground=self.colors["accent"],
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground=self.colors["card_border"]
+        )
+        self.entry_url.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=5, padx=(0, 8))
+        self.entry_url.bind("<Return>", lambda event: self.on_fetch_url())
+
+        self.btn_fetch = tk.Button(
+            url_input_row,
+            text="⬇️ Fetch Audio",
+            font=("Segoe UI", 9, "bold"),
+            bg=self.colors["btn_file"],
+            fg="#ffffff",
+            activebackground=self.colors["btn_file_hover"],
+            activeforeground="#ffffff",
+            relief="flat",
+            padx=12,
+            pady=4,
+            cursor="hand2",
+            command=self.on_fetch_url
+        )
+        self.btn_fetch.pack(side=tk.RIGHT)
+
+        # Row 3: Output file name
         name_label_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
         name_label_row.pack(fill=tk.X, pady=(2, 2))
 
@@ -355,11 +431,11 @@ class TranscriberApp:
         self.lbl_save_hint.pack(side=tk.RIGHT)
 
         name_entry_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
-        name_entry_row.pack(fill=tk.X, pady=(0, 10))
+        name_entry_row.pack(fill=tk.X, pady=(0, 8))
 
         self.entry_name = tk.Entry(
             name_entry_row,
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", 10, "bold"),
             bg=self.colors["input_bg"],
             fg=self.colors["accent"],
             insertbackground=self.colors["accent"],
@@ -367,11 +443,11 @@ class TranscriberApp:
             highlightthickness=1,
             highlightbackground=self.colors["card_border"]
         )
-        self.entry_name.pack(fill=tk.X, ipady=6)
+        self.entry_name.pack(fill=tk.X, ipady=5)
 
-        # Options
+        # Row 4: Options
         opts_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
-        opts_row.pack(fill=tk.X, pady=(0, 10))
+        opts_row.pack(fill=tk.X, pady=(0, 8))
 
         tk.Label(opts_row, text="Model:", font=("Segoe UI", 9), bg=self.colors["card_bg"], fg=self.colors["text"]).pack(side=tk.LEFT, padx=(0, 4))
         self.combo_model = ttk.Combobox(
@@ -402,20 +478,20 @@ class TranscriberApp:
         )
         self.chk_silence.pack(side=tk.LEFT)
 
-        # Actions (Transcribe + Stop)
+        # Row 5: Actions (Transcribe + Stop)
         act_row = tk.Frame(ctrl_card, bg=self.colors["card_bg"])
         act_row.pack(fill=tk.X, pady=(2, 0))
 
         self.btn_transcribe = tk.Button(
             act_row,
             text="▶ Transcribe",
-            font=("Segoe UI", 12, "bold"),
+            font=("Segoe UI", 11, "bold"),
             bg=self.colors["btn_transcribe"],
             fg=self.colors["btn_transcribe_fg"],
             activebackground=self.colors["btn_transcribe_hover"],
             activeforeground=self.colors["btn_transcribe_fg"],
             relief="flat",
-            pady=8,
+            pady=7,
             cursor="hand2",
             command=self.on_start_transcribe
         )
@@ -429,7 +505,7 @@ class TranscriberApp:
             fg=self.colors["btn_stop_fg"],
             relief="flat",
             padx=16,
-            pady=8,
+            pady=7,
             cursor="hand2",
             state=tk.DISABLED,
             command=self.on_stop_requested
@@ -445,7 +521,7 @@ class TranscriberApp:
 
         self.lbl_status = tk.Label(
             ctrl_card,
-            text="Ready. Select an audio file via 'Change file'",
+            text="Ready. Select an audio file via 'Change file' or paste a URL.",
             font=("Segoe UI", 9),
             bg=self.colors["card_bg"],
             fg=self.colors["text_muted"]
@@ -561,10 +637,6 @@ class TranscriberApp:
         self.txt_log.tag_config("warning", foreground=self.colors["warning"])
         self.txt_log.tag_config("error", foreground=self.colors["error"])
 
-        self.selected_file_path = None
-        self.output_directory = None
-        self.last_saved_txt = None
-
     def check_ffmpeg(self):
         try:
             res = subprocess.run(["ffmpeg", "-version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -577,15 +649,15 @@ class TranscriberApp:
     def show_doctor_dialog(self):
         dialog = tk.Toplevel(self.root)
         dialog.title("System Diagnostics & Installation Commands")
-        dialog.geometry("660x540")
-        dialog.minsize(600, 480)
+        dialog.geometry("680x560")
+        dialog.minsize(620, 500)
         dialog.configure(bg=self.colors["bg"])
         dialog.transient(self.root)
         dialog.grab_set()
 
         dialog.update_idletasks()
-        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 330
-        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - 270
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 340
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - 280
         dialog.geometry(f"+{x}+{y}")
 
         pad = tk.Frame(dialog, bg=self.colors["bg"], padx=18, pady=16)
@@ -593,7 +665,7 @@ class TranscriberApp:
 
         tk.Label(
             pad,
-            text="🛠️ Installation Commands for Your Operating System",
+            text="🛠️ System Diagnostics & Installation Commands",
             font=("Segoe UI", 12, "bold"),
             bg=self.colors["bg"],
             fg=self.colors["text"]
@@ -611,12 +683,15 @@ class TranscriberApp:
         except Exception:
             pass
         ffmpeg_text = "🟢 FFmpeg detected" if ffmpeg_installed else "🔴 FFmpeg not found"
-        tk.Label(status_box, text=f"• Media engine: {ffmpeg_text}", font=("Segoe UI", 9), bg=self.colors["card_bg"], fg=self.colors["text"]).pack(anchor="w", pady=1)
+        tk.Label(status_box, text=f"• Media engine (FFmpeg): {ffmpeg_text}", font=("Segoe UI", 9), bg=self.colors["card_bg"], fg=self.colors["text"]).pack(anchor="w", pady=1)
+
+        ytdlp_text = "🟢 yt-dlp installed" if YTDLP_AVAILABLE else "🔴 yt-dlp not found"
+        tk.Label(status_box, text=f"• URL Downloader (yt-dlp): {ytdlp_text}", font=("Segoe UI", 9), bg=self.colors["card_bg"], fg=self.colors["text"]).pack(anchor="w", pady=1)
 
         tk.Label(pad, text="Terminal / Console Commands (click 'Copy'):", font=("Segoe UI", 9, "bold"), bg=self.colors["bg"], fg=self.colors["accent"]).pack(anchor="w", pady=(6, 4))
 
         def add_cmd_block(parent, title, cmd):
-            frame = tk.Frame(parent, bg=self.colors["card_bg"], padx=10, pady=8, highlightthickness=1, highlightbackground=self.colors["card_border"])
+            frame = tk.Frame(parent, bg=self.colors["card_bg"], padx=10, pady=7, highlightthickness=1, highlightbackground=self.colors["card_border"])
             frame.pack(fill=tk.X, pady=3)
 
             tk.Label(frame, text=title, font=("Segoe UI", 8, "bold"), bg=self.colors["card_bg"], fg=self.colors["text_muted"]).pack(anchor="w")
@@ -644,17 +719,19 @@ class TranscriberApp:
             add_cmd_block(pad, "1. Install PyTorch (Apple Silicon Metal MPS):", "pip3 install torch torchvision torchaudio")
             add_cmd_block(pad, "2. Install FFmpeg via Homebrew:", "brew install ffmpeg")
             add_cmd_block(pad, "3. Install Whisper library:", "pip3 install -U openai-whisper")
+            add_cmd_block(pad, "4. Install yt-dlp (URL media downloader):", "pip3 install -U yt-dlp")
         elif sys.platform == "win32":
             # Windows
             add_cmd_block(pad, "1. Install PyTorch with CUDA (NVIDIA):", "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124")
             add_cmd_block(pad, "2. Install FFmpeg (Windows winget):", "winget install Gyan.FFmpeg")
             add_cmd_block(pad, "3. Install Whisper library:", "pip install -U openai-whisper")
+            add_cmd_block(pad, "4. Install yt-dlp (URL media downloader):", "pip install -U yt-dlp")
         else:
             # Linux (Ubuntu / Debian / Arch / Fedora)
             add_cmd_block(pad, "1. Install PyTorch with CUDA (Linux NVIDIA):", "pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124")
             add_cmd_block(pad, "2. Install FFmpeg (Ubuntu / Debian):", "sudo apt update && sudo apt install -y ffmpeg")
-            add_cmd_block(pad, "3. Install FFmpeg (Arch Linux / Manjaro):", "sudo pacman -S ffmpeg")
-            add_cmd_block(pad, "4. Install Whisper:", "pip3 install -U openai-whisper")
+            add_cmd_block(pad, "3. Install Whisper library:", "pip3 install -U openai-whisper")
+            add_cmd_block(pad, "4. Install yt-dlp (URL media downloader):", "pip3 install -U yt-dlp")
 
         btn_close = tk.Button(
             pad,
@@ -668,10 +745,10 @@ class TranscriberApp:
             cursor="hand2",
             command=dialog.destroy
         )
-        btn_close.pack(fill=tk.X, pady=(12, 0))
+        btn_close.pack(fill=tk.X, pady=(10, 0))
 
     def on_change_file(self):
-        """Open file chooser dialog."""
+        """Open file chooser dialog for local audio files."""
         filetypes = [
             ("Audio Files", "*.mp3 *.m4a *.wav *.ogg *.flac *.aac *.wma *.opus *.m4b"),
             ("All Files", "*.*")
@@ -692,6 +769,149 @@ class TranscriberApp:
 
             self.lbl_status.config(text=f"File ready: {filename}. Click 'Transcribe'.", fg=self.colors["accent"])
             self.log_system(f"Selected file: {chosen}")
+
+    def on_fetch_url(self):
+        """Handle click on 'Fetch Audio' button."""
+        if self.is_processing:
+            return
+
+        url = self.entry_url.get().strip()
+        if not url:
+            messagebox.showwarning("Enter URL", "Please enter or paste a media URL (VK Video, YouTube, Rutube, etc.) first.")
+            return
+
+        if not url.startswith(("http://", "https://")):
+            messagebox.showwarning("Invalid URL", "The URL must start with http:// or https://")
+            return
+
+        if not YTDLP_AVAILABLE:
+            messagebox.showerror(
+                "yt-dlp Required",
+                "The 'yt-dlp' library is required to download audio from URLs.\n\n"
+                "Please install it in your terminal:\npip install -U yt-dlp"
+            )
+            return
+
+        self.set_busy(True)
+        self.lbl_status.config(text="Fetching audio from URL...", fg=self.colors["accent"])
+        self.log_system(f"Initiating URL download: {url}")
+        threading.Thread(target=self._fetch_url_worker, args=(url,), daemon=True).start()
+
+    def _fetch_url_worker(self, url):
+        """Worker thread to download audio from URL and populate GUI fields."""
+        try:
+            mp3_file, title = self.download_audio_from_url(url)
+            if mp3_file and os.path.exists(mp3_file):
+                self.selected_file_path = mp3_file
+                self.output_directory = os.path.dirname(mp3_file)
+                self.last_downloaded_url = url
+                filename = os.path.basename(mp3_file)
+
+                clean_title = title
+                for ch in '<>:"/\\|?*':
+                    clean_title = clean_title.replace(ch, "_")
+                clean_title = clean_title.strip(". ")
+                default_base_name = f"{clean_title}_final"
+
+                self.root.after(0, lambda: [
+                    self.lbl_selected_file.config(text=f"Selected (URL): {filename}", fg=self.colors["text"], font=("Segoe UI", 9, "bold")),
+                    self.entry_name.delete(0, tk.END),
+                    self.entry_name.insert(0, default_base_name),
+                    self.lbl_status.config(text=f"Audio ready: {filename}. Click 'Transcribe'.", fg=self.colors["success"]),
+                    self.btn_open_folder.config(state=tk.NORMAL)
+                ])
+                self.log_success(f"Audio downloaded and saved: {mp3_file}")
+        except DownloadCancelledError:
+            self.log_warning("Audio download was canceled.")
+            self.root.after(0, lambda: self.lbl_status.config(text="Download canceled.", fg=self.colors["warning"]))
+        except Exception as e:
+            if not self.cancel_requested:
+                err_msg = str(e)
+                self.log_error(f"Failed to fetch audio from URL: {err_msg}")
+                self.root.after(0, lambda: messagebox.showerror("Download Error", f"Failed to fetch audio from URL:\n{err_msg}"))
+        finally:
+            self.root.after(0, lambda: self.set_busy(False))
+
+    def download_audio_from_url(self, url, custom_name=None):
+        """
+        Downloads audio from supported video/audio URLs (VK Video, YouTube, Rutube, etc.)
+        using yt-dlp and extracts it to MP3 via FFmpeg.
+        """
+        if not YTDLP_AVAILABLE:
+            raise RuntimeError("yt-dlp is not installed. Please install it: pip install -U yt-dlp")
+
+        downloads_dir = self.downloads_dir
+        os.makedirs(downloads_dir, exist_ok=True)
+
+        def progress_hook(d):
+            if self.cancel_requested:
+                raise DownloadCancelledError("Download canceled by user.")
+
+            status = d.get('status')
+            if status == 'downloading':
+                downloaded = d.get('downloaded_bytes', 0)
+                total = d.get('total_bytes') or d.get('total_bytes_estimate', 0)
+                speed = d.get('speed', 0) or 0
+                eta = d.get('eta', 0) or 0
+
+                percent = int(downloaded * 100 / total) if total > 0 else 0
+                mb_done = downloaded / (1024 * 1024)
+                mb_total = total / (1024 * 1024) if total > 0 else 0
+                speed_mb = speed / (1024 * 1024)
+
+                if total > 0:
+                    status_msg = f"Downloading audio: {percent}% ({mb_done:.1f}/{mb_total:.1f} MB at {speed_mb:.1f} MB/s, ETA {eta}s)"
+                    self.root.after(0, lambda p=percent, s=status_msg: [
+                        self.progress_bar.config(mode="determinate", maximum=100, value=p),
+                        self.lbl_status.config(text=s, fg=self.colors["accent"])
+                    ])
+                else:
+                    status_msg = f"Downloading audio: {mb_done:.1f} MB at {speed_mb:.1f} MB/s"
+                    self.root.after(0, lambda s=status_msg: [
+                        self.progress_bar.config(mode="indeterminate"),
+                        self.lbl_status.config(text=s, fg=self.colors["accent"])
+                    ])
+
+            elif status == 'finished':
+                self.root.after(0, lambda: [
+                    self.progress_bar.config(mode="indeterminate"),
+                    self.progress_bar.start(10),
+                    self.lbl_status.config(text="Converting audio to MP3 with FFmpeg...", fg=self.colors["accent"])
+                ])
+
+        outtmpl = os.path.join(downloads_dir, f"{custom_name}.%(ext)s") if custom_name else os.path.join(downloads_dir, "%(title)s.%(ext)s")
+
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': outtmpl,
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+            'progress_hooks': [progress_hook],
+            'quiet': True,
+            'no_warnings': True,
+            'noplaylist': True,
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            title = info.get('title', 'downloaded_audio')
+
+            final_file = None
+            if 'requested_downloads' in info and info['requested_downloads']:
+                final_file = info['requested_downloads'][0].get('filepath')
+
+            if not final_file or not os.path.exists(final_file):
+                prepared = ydl.prepare_filename(info)
+                candidate = os.path.splitext(prepared)[0] + ".mp3"
+                if os.path.exists(candidate):
+                    final_file = candidate
+                elif os.path.exists(prepared):
+                    final_file = prepared
+
+            return final_file, title
 
     def log(self, text, tag="stdout"):
         self.txt_log.insert(tk.END, text, tag)
@@ -741,13 +961,17 @@ class TranscriberApp:
         if busy:
             self.cancel_requested = False
             self.btn_transcribe.config(
-                text="⏳ Transcribing...",
+                text="⏳ Processing...",
                 state=tk.DISABLED,
                 bg=self.colors["btn_sub"],
                 fg=self.colors["text_muted"]
             )
             self.btn_stop.config(state=tk.NORMAL)
             self.btn_change_file.config(state=tk.DISABLED)
+            if hasattr(self, "btn_fetch"):
+                self.btn_fetch.config(state=tk.DISABLED)
+            if hasattr(self, "entry_url"):
+                self.entry_url.config(state=tk.DISABLED)
             self.progress_bar.config(mode="indeterminate")
             self.progress_bar.start(10)
         else:
@@ -759,10 +983,14 @@ class TranscriberApp:
             )
             self.btn_stop.config(state=tk.DISABLED)
             self.btn_change_file.config(state=tk.NORMAL)
+            if hasattr(self, "btn_fetch"):
+                self.btn_fetch.config(state=tk.NORMAL)
+            if hasattr(self, "entry_url"):
+                self.entry_url.config(state=tk.NORMAL)
             self.progress_bar.stop()
 
     def on_stop_requested(self):
-        """Gracefully cancel transcription."""
+        """Gracefully cancel download or transcription."""
         if not self.is_processing:
             return
         self.cancel_requested = True
@@ -782,25 +1010,45 @@ class TranscriberApp:
             messagebox.showerror("Error", f"Missing torch / whisper dependencies:\n{IMPORT_ERROR_MSG}")
             return
 
-        if not self.selected_file_path or not os.path.exists(self.selected_file_path):
-            messagebox.showwarning("Select File", "Please select an audio file first using 'Change file'.")
+        url = self.entry_url.get().strip() if hasattr(self, "entry_url") else ""
+        has_new_url = bool(url and url.startswith(("http://", "https://")) and url != self.last_downloaded_url)
+
+        source_url = None
+        if has_new_url or (not self.selected_file_path and url):
+            if not YTDLP_AVAILABLE:
+                messagebox.showerror(
+                    "yt-dlp Missing",
+                    "The 'yt-dlp' library is required to download audio from URLs.\n\n"
+                    "Please install it with:\npip install -U yt-dlp"
+                )
+                return
+            if not url.startswith(("http://", "https://")):
+                messagebox.showwarning("Invalid URL", "The URL must start with http:// or https://")
+                return
+            source_url = url
+        elif not self.selected_file_path or not os.path.exists(self.selected_file_path):
+            messagebox.showwarning(
+                "Select Audio",
+                "Please select an audio file using 'Change file' or paste a media URL (VK Video, YouTube, etc.)."
+            )
             return
 
         raw_name = self.entry_name.get().strip()
-        if not raw_name:
+        base_name = None
+        if raw_name:
+            clean = raw_name
+            for char in '<>:"/\\|?*':
+                clean = clean.replace(char, "_")
+            base_name = clean.strip(". ")
+
+        if not base_name and self.selected_file_path:
             filename = os.path.basename(self.selected_file_path)
             name_without_ext, _ = os.path.splitext(filename)
-            raw_name = f"{name_without_ext}_final"
+            base_name = f"{name_without_ext}_final"
 
-        # Strict cross-platform filename sanitization
-        base_name = os.path.basename(raw_name)
-        for char in '<>:"/\\|?*':
-            base_name = base_name.replace(char, "_")
-        base_name = base_name.strip(". ")
-        if not base_name:
-            base_name = "transcription_final"
-        self.entry_name.delete(0, tk.END)
-        self.entry_name.insert(0, base_name)
+        if base_name:
+            self.entry_name.delete(0, tk.END)
+            self.entry_name.insert(0, base_name)
 
         selected_model_val = self.combo_model.get().strip()
         model_name = selected_model_val.split()[0] if selected_model_val else "turbo"
@@ -812,9 +1060,11 @@ class TranscriberApp:
         self.btn_open_folder.config(state=tk.DISABLED)
         self.btn_open_txt.config(state=tk.DISABLED)
 
+        out_dir = self.output_directory if self.output_directory else self.downloads_dir
+
         threading.Thread(
             target=self.run_pipeline,
-            args=(self.selected_file_path, self.output_directory, base_name, model_name, lang, use_silence),
+            args=(self.selected_file_path, out_dir, base_name, model_name, lang, use_silence, source_url),
             daemon=True
         ).start()
 
@@ -883,7 +1133,7 @@ class TranscriberApp:
             self.log_error(f"Error downloading model: {e}")
             return False
 
-    def run_pipeline(self, source_file, out_dir, base_name, model_name, lang, use_silence):
+    def run_pipeline(self, source_file, out_dir, base_name, model_name, lang, use_silence, source_url=None):
         old_stdout = sys.stdout
         old_stderr = sys.stderr
 
@@ -893,6 +1143,42 @@ class TranscriberApp:
 
         t0 = time.time()
         try:
+            # 0. Download from URL if requested
+            if source_url and (not source_file or not os.path.exists(source_file)):
+                self.lbl_status.config(text="Downloading audio from URL...", fg=self.colors["accent"])
+                self.log_system(f"Downloading audio from URL: {source_url}")
+                mp3_file, title = self.download_audio_from_url(source_url, custom_name=base_name)
+                if self.cancel_requested or not mp3_file or not os.path.exists(mp3_file):
+                    return
+                source_file = mp3_file
+                out_dir = os.path.dirname(mp3_file)
+                self.selected_file_path = mp3_file
+                self.output_directory = out_dir
+                self.last_downloaded_url = source_url
+
+                if not base_name or base_name == "transcription_final":
+                    clean_title = title
+                    for ch in '<>:"/\\|?*':
+                        clean_title = clean_title.replace(ch, "_")
+                    clean_title = clean_title.strip(". ")
+                    base_name = f"{clean_title}_final"
+                    self.root.after(0, lambda n=base_name: [
+                        self.entry_name.delete(0, tk.END),
+                        self.entry_name.insert(0, n)
+                    ])
+
+                self.root.after(0, lambda fn=os.path.basename(mp3_file): self.lbl_selected_file.config(
+                    text=f"Selected (URL): {fn}", fg=self.colors["text"], font=("Segoe UI", 9, "bold")
+                ))
+
+            if not source_file or not os.path.exists(source_file):
+                raise RuntimeError("No valid audio file available for transcription.")
+
+            if not base_name:
+                filename = os.path.basename(source_file)
+                name_without_ext, _ = os.path.splitext(filename)
+                base_name = f"{name_without_ext}_final"
+
             self.lbl_status.config(text="Preparing audio file...", fg=self.colors["accent"])
             self.log_system(f"Starting processing: {os.path.basename(source_file)}")
             self.log_system(f"Outputs: {base_name}.txt and {base_name}.json")
