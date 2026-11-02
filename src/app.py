@@ -74,6 +74,31 @@ def get_subprocess_creation_flags():
     return 0
 
 
+def format_download_error(err):
+    """Formats yt-dlp exceptions into clear, actionable error descriptions."""
+    raw = str(err).strip()
+    if raw.startswith("ERROR: "):
+        raw = raw[7:]
+
+    # Strip verbose nested traceback from TransportError
+    if " (caused by " in raw:
+        raw = raw.split(" (caused by ")[0]
+
+    lower = raw.lower()
+    if any(k in lower for k in ["getaddrinfo failed", "failed to resolve", "connection refused", "timed out", "timeout", "network is unreachable", "connection to"]):
+        hint = "\n\n💡 Tip: Unable to resolve or reach host. Check your internet connection or verify the URL domain."
+    elif "access denied" in lower or "private" in lower or "login" in lower or "sign in" in lower:
+        hint = "\n\n💡 Tip: This media is private, age-restricted, or requires user authorization."
+    elif "not found" in lower or "404" in lower or "does not exist" in lower:
+        hint = "\n\n💡 Tip: Media not found (HTTP 404). The video may have been deleted or the link is expired."
+    elif "unsupported url" in lower:
+        hint = "\n\n💡 Tip: The provided URL or service is not supported by yt-dlp. Make sure it points directly to the video/audio."
+    else:
+        hint = ""
+
+    return f"{raw}{hint}"
+
+
 class TextRedirector:
     """Redirects stdout/stderr to the GUI queue for real-time log rendering."""
     def __init__(self, log_queue, tag="stdout"):
@@ -826,9 +851,12 @@ class TranscriberApp:
             self.root.after(0, lambda: self.lbl_status.config(text="Download canceled.", fg=self.colors["warning"]))
         except Exception as e:
             if not self.cancel_requested:
-                err_msg = str(e)
+                err_msg = format_download_error(e)
                 self.log_error(f"Failed to fetch audio from URL: {err_msg}")
-                self.root.after(0, lambda: messagebox.showerror("Download Error", f"Failed to fetch audio from URL:\n{err_msg}"))
+                self.root.after(0, lambda msg=err_msg: [
+                    self.lbl_status.config(text=f"❌ Download error: {msg.splitlines()[0][:45]}...", fg=self.colors["error"]),
+                    messagebox.showerror("Download Error", f"Failed to fetch audio from URL:\n\n{msg}")
+                ])
         finally:
             self.root.after(0, lambda: self.set_busy(False))
 
@@ -1026,7 +1054,13 @@ class TranscriberApp:
                 messagebox.showwarning("Invalid URL", "The URL must start with http:// or https://")
                 return
             source_url = url
-        elif not self.selected_file_path or not os.path.exists(self.selected_file_path):
+        elif self.selected_file_path and not os.path.exists(self.selected_file_path):
+            messagebox.showerror(
+                "File Not Found",
+                f"Selected audio file does not exist on disk:\n\n{self.selected_file_path}\n\nPlease choose an existing file or enter a media URL."
+            )
+            return
+        elif not self.selected_file_path:
             messagebox.showwarning(
                 "Select Audio",
                 "Please select an audio file using 'Change file' or paste a media URL (VK Video, YouTube, etc.)."
@@ -1147,7 +1181,15 @@ class TranscriberApp:
             if source_url and (not source_file or not os.path.exists(source_file)):
                 self.lbl_status.config(text="Downloading audio from URL...", fg=self.colors["accent"])
                 self.log_system(f"Downloading audio from URL: {source_url}")
-                mp3_file, title = self.download_audio_from_url(source_url, custom_name=base_name)
+                try:
+                    mp3_file, title = self.download_audio_from_url(source_url, custom_name=base_name)
+                except DownloadCancelledError:
+                    self.log_warning("Audio download was canceled.")
+                    return
+                except Exception as dl_err:
+                    formatted_err = format_download_error(dl_err)
+                    raise RuntimeError(formatted_err)
+
                 if self.cancel_requested or not mp3_file or not os.path.exists(mp3_file):
                     return
                 source_file = mp3_file
