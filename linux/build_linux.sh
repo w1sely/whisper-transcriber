@@ -6,6 +6,13 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$ROOT_DIR" || exit 1
 
+# Activate virtual environment if present
+if [ -d "$ROOT_DIR/.venv" ] && [ -f "$ROOT_DIR/.venv/bin/activate" ]; then
+    source "$ROOT_DIR/.venv/bin/activate"
+elif [ -d "$ROOT_DIR/venv" ] && [ -f "$ROOT_DIR/venv/bin/activate" ]; then
+    source "$ROOT_DIR/venv/bin/activate"
+fi
+
 echo "===================================================="
 echo " Building Whisper Transcriber for Linux (ELF)"
 echo "===================================================="

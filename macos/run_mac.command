@@ -10,6 +10,15 @@ echo "===================================================="
 echo " Starting Whisper Transcriber on macOS"
 echo "===================================================="
 
+# Activate virtual environment if present
+if [ -d "$ROOT_DIR/.venv" ] && [ -f "$ROOT_DIR/.venv/bin/activate" ]; then
+    echo "[INFO] Activating virtual environment (.venv)..."
+    source "$ROOT_DIR/.venv/bin/activate"
+elif [ -d "$ROOT_DIR/venv" ] && [ -f "$ROOT_DIR/venv/bin/activate" ]; then
+    echo "[INFO] Activating virtual environment (venv)..."
+    source "$ROOT_DIR/venv/bin/activate"
+fi
+
 # Check Python3
 if command -v python3 &>/dev/null; then
     python3 src/app.py

@@ -1011,10 +1011,10 @@ class TranscriberApp:
         # OS-specific setup commands
         if sys.platform == "darwin":
             # macOS
-            add_cmd_block(pad, "1. Install PyTorch (Apple Silicon Metal MPS):", "pip3 install torch torchvision torchaudio")
-            add_cmd_block(pad, "2. Install FFmpeg via Homebrew:", "brew install ffmpeg")
-            add_cmd_block(pad, "3. Install Whisper library:", "pip3 install -U openai-whisper")
-            add_cmd_block(pad, "4. Install yt-dlp (URL media downloader):", "pip3 install -U yt-dlp")
+            add_cmd_block(pad, "1. Activate venv (if Homebrew PEP 668):", "source .venv/bin/activate")
+            add_cmd_block(pad, "2. Install PyTorch (Apple Silicon Metal MPS):", "pip install torch torchvision torchaudio")
+            add_cmd_block(pad, "3. Install FFmpeg & Tk via Homebrew:", "brew install ffmpeg python-tk")
+            add_cmd_block(pad, "4. Install Whisper & yt-dlp:", "pip install -U openai-whisper yt-dlp")
         elif sys.platform == "win32":
             # Windows
             add_cmd_block(pad, "1. Install PyTorch with CUDA (NVIDIA):", "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124")

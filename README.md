@@ -62,7 +62,7 @@ windows\run.bat
 1. **Install FFmpeg and Python Tkinter**:
    ```bash
    # Ubuntu / Debian / Linux Mint:
-   sudo apt update && sudo apt install -y ffmpeg python3-tk python3-pip
+   sudo apt update && sudo apt install -y ffmpeg python3-tk python3-pip python3-venv
 
    # Arch Linux / Manjaro:
    sudo pacman -S ffmpeg tk python-pip
@@ -75,12 +75,19 @@ windows\run.bat
    git clone https://github.com/w1sely/whisper-transcriber.git
    cd whisper-transcriber
 
+   # Create and activate virtual environment (recommended for modern Linux with PEP 668):
+   python3 -m venv .venv
+   source .venv/bin/activate
+
    # For NVIDIA GPUs (CUDA):
-   pip3 install -r requirements-cuda.txt
+   pip install -r requirements-cuda.txt
 
    # For CPU-only or AMD:
-   pip3 install -r requirements.txt
+   pip install -r requirements.txt
    ```
+   > [!TIP]
+   > *Alternatively, to install globally without a virtual environment, pass:* `pip3 install --break-system-packages -r requirements-cuda.txt`
+
 3. **Launch the application**:
    ```bash
    chmod +x linux/run.sh && ./linux/run.sh
@@ -99,11 +106,20 @@ windows\run.bat
    ```zsh
    git clone https://github.com/w1sely/whisper-transcriber.git
    cd whisper-transcriber
-   pip3 install -r requirements-macos.txt
+
+   # Create and activate virtual environment (avoids Homebrew PEP 668 externally-managed error):
+   python3 -m venv .venv
+   source .venv/bin/activate
+
+   # Install dependencies:
+   pip install -r requirements-macos.txt
    ```
+   > [!TIP]
+   > *Alternatively, to install globally without a virtual environment, pass:* `pip3 install --break-system-packages -r requirements-macos.txt`
+
 3. **Launch in 1 Click**:
    Simply **double-click `macos/run_mac.command`** in Finder!
-   * The app will automatically initialize Apple Silicon Metal Performance Shaders (MPS) on M1/M2/M3/M4 chips for fast hardware-accelerated transcription.
+   * The launcher automatically detects and activates `.venv`, initializing Apple Silicon Metal Performance Shaders (MPS) on M1/M2/M3/M4 chips for fast hardware-accelerated transcription.
    * *(Optional)* To compile a native macOS `.app` bundle: `chmod +x macos/build_macos.sh && ./macos/build_macos.sh`.
 
 ---
